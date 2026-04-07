@@ -203,3 +203,25 @@
 
             const total = w_val + sp.hooks[state.hook].w;
             const ratio = rated > 0 ? (total / rated) * 100 : 0;
+            const roundedRatio = Math.round(ratio);
+
+            recText.innerHTML = `<span style="color:#000">判定中: H ${h_val.toFixed(1)}m / L ${len.toFixed(1)}m / CW:${state.cw}t</span>`;
+            
+            if (rated === 0) {
+                ratioDisp.innerText = "不可"; statusLabel.innerText = "範囲外";
+                panel.style.backgroundColor = 'var(--bg-error)';
+                detail.innerText = `定格なし / 負荷合計: ${total.toFixed(1)}t`;
+            } else {
+                ratioDisp.innerText = roundedRatio + "%";
+                statusLabel.innerText = ratio >= 100 ? "オーバー" : "揚重判定OK";
+                detail.innerText = `定格(${r_ceil}m): ${rated.toFixed(1)}t / 負荷合計: ${total.toFixed(1)}t`;
+                
+                if (ratio >= 100) { panel.style.backgroundColor = 'var(--bg-error)'; }
+                else if (ratio >= 90) { panel.style.backgroundColor = 'var(--bg-danger)'; }
+                else if (ratio >= 80) { panel.style.backgroundColor = 'var(--bg-caution)'; }
+                else { panel.style.backgroundColor = 'var(--bg-success)'; }
+            }
+        }
+    </script>
+</body>
+</html>
