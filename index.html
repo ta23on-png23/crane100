@@ -3,48 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>クレーン判定アプリ（仮） V46</title>
+    <title>クレーン判定アプリ（仮） V47</title>
     <style>
-        :root { --bg-safe: #ffffff; --bg-caution: #ffff99; --bg-danger: #ffe0e0; --bg-error: #ffcccc; --bg-success: #ccffcc; --accent: #007bff; --success: #28a745; --waiting: #f0f0f0; }
+        :root { --bg-safe: #ffffff; --bg-caution: #ffff99; --bg-danger: #ffe0e0; --bg-error: #ffcccc; --bg-success: #ccffcc; --accent: #007bff; --success: #28a745; --waiting: #f0f0f0; --info-blue: #0000cd; }
         body { font-family: sans-serif; margin: 0; padding: 0; background-color: #f0f0f0; color: #333; }
-        
         #fixed-header { position: sticky; top: 0; z-index: 1000; background: #fff; border-bottom: 2px solid #ccc; padding: 5px 10px; }
-        
-        /* 免責事項（赤枠） */
         .disclaimer { color: #f00; font-size: 0.75rem; font-weight: bold; text-align: center; border: 1px solid #f00; padding: 2px; margin-bottom: 4px; }
-        
-        /* アプリ名（濃い青・太文字・一行） */
         .app-title { color: #000080; font-size: 1.2rem; font-weight: 900; text-align: center; white-space: nowrap; margin: 4px 0; }
-        
-        /* 判定パネル */
-        #display-panel { display: flex; align-items: center; border-radius: 8px; padding: 5px; border: 2px solid #000; background-color: var(--waiting); transition: 0.3s; }
+        #display-panel { display: flex; align-items: center; border-radius: 8px; padding: 5px; border: 2px solid #000; background-color: var(--waiting); transition: 0.3s; min-height: 80px; }
         .ratio-wrapper { text-align: center; flex: 0 0 35%; border-right: 2px solid #ccc; }
-        .status-label { font-size: 0.9rem; font-weight: bold; background: #000; color: #fff; padding: 1px 8px; border-radius: 4px; }
+        .status-label { font-size: 0.8rem; font-weight: bold; background: #000; color: #fff; padding: 1px 6px; border-radius: 4px; }
         .result-main { font-size: 2.8rem; font-weight: 900; line-height: 1.1; }
         .info-wrapper { flex: 1; padding-left: 10px; font-size: 0.85rem; font-weight: bold; }
-        
         #content { padding: 10px; padding-bottom: 60px; }
         h2 { font-size: 1.1rem; border-left: 8px solid #333; background: #ddd; padding: 4px 10px; margin: 12px 0 8px; }
         h3 { font-size: 0.95rem; margin: 8px 0 4px; color: #555; }
-        
         .input-view { width: 100%; font-size: 1.4rem; padding: 8px; border: 2px solid #333; border-radius: 6px; box-sizing: border-box; text-align: right; font-weight: bold; margin-bottom: 8px; }
         .red-note { color: #f00; font-size: 0.8rem; font-weight: bold; margin-bottom: 8px; display: block; }
-        
         .grid { display: grid; gap: 6px; margin-bottom: 12px; }
         .cols-2 { grid-template-columns: repeat(2, 1fr); }
         .cols-3 { grid-template-columns: repeat(3, 1fr); }
         .cols-4 { grid-template-columns: repeat(4, 1fr); }
-        
         button { height: 48px; font-size: 0.95rem; font-weight: bold; border: 2px solid #666; border-radius: 6px; background: #fff; }
         button.selected { background-color: #000 !important; color: #fff !important; }
+        .suggestion { color: var(--info-blue); font-size: 0.9rem; margin-top: 4px; animation: flash 1.5s infinite; }
+        @keyframes flash { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
     <div id="fixed-header">
         <div class="disclaimer">参考値。現場確認必須。損害責任負いません。</div>
-        
         <div class="app-title">クレーン判定アプリ（仮）</div>
-        
         <div id="display-panel">
             <div class="ratio-wrapper">
                 <div class="status-label" id="status-label">待機中</div>
@@ -53,6 +42,7 @@
             <div class="info-wrapper">
                 <div id="recommend-text" style="color:#f00;">STEP 1から入力</div>
                 <div id="result-detail" style="font-size:0.8rem; margin-top:2px;"></div>
+                <div id="suggestion-box" class="suggestion" style="display:none;"></div>
             </div>
         </div>
     </div>
@@ -66,23 +56,23 @@
         <div id="step-area-all" style="display:none;">
             <h3>アウトリガー張出幅（m）</h3>
             <div class="grid cols-4">
-                <button onclick="selectItem('outrigger', '7.8', this)" id="out-78">最大 7.8</button>
+                <button onclick="selectItem('outrigger', '7.8', this)" class="selected">最大 7.8</button>
                 <button onclick="selectItem('outrigger', '7.2', this)">7.2</button>
                 <button onclick="selectItem('outrigger', '5.38', this)">5.38</button>
                 <button onclick="selectItem('outrigger', '2.36', this)">最小 2.36</button>
             </div>
             <h3>カウンターウエイト (CW)</h3>
             <div class="grid cols-2">
-                <button onclick="selectItem('cw', '4.0', this)" id="cw-4">装着 4.0t</button>
+                <button onclick="selectItem('cw', '4.0', this)" class="selected">装着 4.0t</button>
                 <button onclick="selectItem('cw', '0.0', this)">無し 0.0t</button>
             </div>
 
             <h2>STEP 2：最終構成の確定</h2>
             <div class="grid cols-2">
-                <button onclick="selectItem('mode', 'main', this)" id="mode-main">メインブーム</button>
+                <button onclick="selectItem('mode', 'main', this)" id="mode-main" class="selected">メインブーム</button>
                 <button onclick="selectItem('mode', 'jib', this)" id="mode-jib">ジブ使用</button>
             </div>
-            <div id="jib-options" style="display:none; background: #fff; border: 2px solid #333; padding: 10px; border-radius: 8px; margin-bottom: 12px;">
+            <div id="jib-options" style="display:none; background: #fff; border: 3px solid #333; padding: 10px; border-radius: 8px; margin-bottom: 12px;">
                 <div class="grid cols-3" id="jib-len-btns">
                     <button onclick="selectItem('jibLen', '8.4', this)">8.4m</button>
                     <button onclick="selectItem('jibLen', '13.1', this)">13.1m</button>
@@ -97,7 +87,7 @@
             </div>
             <h3>使用フック選択</h3>
             <div class="grid cols-3">
-                <button onclick="selectItem('hook', '50t', this)" id="hook-50">50t</button>
+                <button onclick="selectItem('hook', '50t', this)" id="hook-50" class="selected">50t</button>
                 <button onclick="selectItem('hook', '35t', this)">35t</button>
                 <button onclick="selectItem('hook', '5t', this)" id="hook-5">補巻</button>
             </div>
@@ -109,11 +99,11 @@
             <input type="number" class="input-view" id="weight" placeholder="0.0" oninput="inputNum(this)" step="0.1">
 
             <h2>STEP 4：揚程計画（m）</h2>
-            <h3>地切り高さ <span class="red-note">※地上から荷物の底面まで</span></h3>
+            <h3>地切り高さ <span class="red-note">※地上から底面まで</span></h3>
             <input type="number" class="input-view" id="h1" placeholder="0.0" oninput="inputNum(this)" step="0.1">
             <h3>荷物の高さ</h3>
             <input type="number" class="input-view" id="h2" placeholder="0.0" oninput="inputNum(this)" step="0.1">
-            <h3>吊具の長さ <span class="red-note">※先端〜吊具間1.9mは自動加算</span></h3>
+            <h3>吊具の長さ <span class="red-note">※1.9mは自動加算</span></h3>
             <input type="number" class="input-view" id="h3" placeholder="0.0" oninput="inputNum(this)" step="0.1">
         </div>
     </div>
@@ -129,7 +119,8 @@
                     "2.36_4.0": { 5:12.0, 10:5.5, 15:2.8 }
                 },
                 jibCharts: {
-                    "8.4": { "5": {10:4.0, 20:3.4, 30:2.5, 40:1.45} }
+                    "8.4": { "5": {10:4.0, 15:3.8, 20:3.4, 25:3.0, 30:2.5, 35:2.0, 40:1.45} },
+                    "13.1": { "5": {20:2.5, 30:2.0, 40:1.2} }
                 }
             }
         };
@@ -169,6 +160,9 @@
             const statusLabel = document.getElementById('status-label');
             const recText = document.getElementById('recommend-text');
             const detail = document.getElementById('result-detail');
+            const sugBox = document.getElementById('suggestion-box');
+
+            sugBox.style.display = 'none';
 
             let missing = [];
             if (!state.radius) missing.push("半径"); if (!state.weight) missing.push("重量");
@@ -182,13 +176,6 @@
                 detail.innerText = ""; return;
             }
 
-            if (h_val > sp.maxHeight || len > sp.maxReach) {
-                ratioDisp.innerText = "限界"; statusLabel.innerText = "能力外";
-                panel.style.backgroundColor = 'var(--bg-error)';
-                recText.innerHTML = `<span style="color:#f00">能力外です</span>`;
-                return;
-            }
-
             let rated = 0;
             if (state.mode === 'main') {
                 let chartKey = `${state.outrigger}_${state.cw}`;
@@ -196,26 +183,35 @@
                 rated = chart[r_ceil] || (r_ceil < 5 ? chart[5] : 0);
                 if (r_ceil > 44 || len > 48.0) rated = 0;
             } else {
-                let baseJib = sp.jibCharts["8.4"]["5"][r_ceil] || 0;
+                let baseJib = sp.jibCharts[state.jibLen]?.[state.offset]?.[r_ceil] || 0;
                 rated = (state.cw === '0.0') ? baseJib * 0.7 : baseJib; 
                 if (state.outrigger !== '7.8') rated = 0;
             }
 
             const total = w_val + sp.hooks[state.hook].w;
             const ratio = rated > 0 ? (total / rated) * 100 : 0;
-            const roundedRatio = Math.round(ratio);
 
-            recText.innerHTML = `<span style="color:#000">判定中: H ${h_val.toFixed(1)}m / L ${len.toFixed(1)}m / CW:${state.cw}t</span>`;
+            // --- ジブ提案ロジック ---
+            if (state.mode === 'main' && (rated === 0 || ratio >= 100)) {
+                // 裏側でジブ（8.4m/5度）の定格があるかチェック
+                let jibCheck = sp.jibCharts["8.4"]["5"][r_ceil] || 0;
+                if (state.cw === '0.0') jibCheck *= 0.7;
+                if (jibCheck > total && state.outrigger === '7.8') {
+                    sugBox.innerText = "【提案】ジブを使用すると揚重可能です";
+                    sugBox.style.display = 'block';
+                }
+            }
+
+            recText.innerHTML = `<span style="color:#000">H:${h_val.toFixed(1)}m / L:${len.toFixed(1)}m / CW:${state.cw}t</span>`;
             
             if (rated === 0) {
                 ratioDisp.innerText = "不可"; statusLabel.innerText = "範囲外";
                 panel.style.backgroundColor = 'var(--bg-error)';
                 detail.innerText = `定格なし / 負荷合計: ${total.toFixed(1)}t`;
             } else {
-                ratioDisp.innerText = roundedRatio + "%";
+                ratioDisp.innerText = Math.round(ratio) + "%";
                 statusLabel.innerText = ratio >= 100 ? "オーバー" : "揚重判定OK";
                 detail.innerText = `定格(${r_ceil}m): ${rated.toFixed(1)}t / 負荷合計: ${total.toFixed(1)}t`;
-                
                 if (ratio >= 100) { panel.style.backgroundColor = 'var(--bg-error)'; }
                 else if (ratio >= 90) { panel.style.backgroundColor = 'var(--bg-danger)'; }
                 else if (ratio >= 80) { panel.style.backgroundColor = 'var(--bg-caution)'; }
