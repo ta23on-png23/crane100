@@ -3,44 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>クレーン施工検討アプリ V41 - リミッター強化</title>
+    <title>クレーン施工検討アプリ V43 - UI刷新版</title>
     <style>
         :root { --bg-safe: #ffffff; --bg-caution: #ffff99; --bg-danger: #ffcccc; --bg-error: #ff4444; --accent: #007bff; --success: #28a745; }
-        body { font-family: sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; user-select: none; }
-        #fixed-header { position: sticky; top: 0; z-index: 1000; background: #f5f5f5; padding: 5px 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
-        .disclaimer { color: #ff0000; font-size: 1.1rem; font-weight: bold; border: 2px solid #ff0000; padding: 8px; margin-bottom: 5px; background-color: #fff; text-align: center; }
-        #display-panel { background-color: var(--bg-safe); border: 4px solid #000; border-radius: 12px; padding: 10px; text-align: center; }
-        .status-label { font-size: 1.8rem; font-weight: bold; background: #000; color: #fff; display: inline-block; padding: 2px 25px; border-radius: 4px; margin-bottom: 5px; }
-        .result-main { font-size: 4.5rem; font-weight: 900; line-height: 1.0; margin-bottom: 8px; }
-        .warning-box-black { border: 2px solid #000; font-size: 1.8rem; font-weight: bold; background: #fff; padding: 6px; margin-bottom: 6px; }
-        .result-detail { font-size: 1.8rem; font-weight: bold; border-top: 2px solid #333; padding-top: 8px; }
-        .recommend-box { background: #e3f2fd; border: 3px dashed var(--accent); padding: 15px; border-radius: 10px; margin-top: 10px; text-align: left; }
-        #recommend-text { font-size: 2.3rem; font-weight: bold; line-height: 1.3; color: #333; }
-        .txt-error { color: #ff0000; font-weight: 900; }
-        #content { padding: 15px; }
-        h2 { border-left: 12px solid #333; background: #ddd; padding: 10px 15px; font-size: 1.8rem; margin: 35px 0 15px; }
-        h3 { font-size: 1.5rem; margin: 15px 0 8px; color: #444; }
-        .input-view { background: #fff; border: 3px solid #333; font-size: 2.5rem; padding: 10px; text-align: right; margin-bottom: 10px; font-weight: bold; min-height: 4.5rem; display: flex; justify-content: flex-end; align-items: center; }
-        .red-note { color: #ff0000; font-size: 1.3rem; font-weight: bold; display: block; margin-top: 5px; }
-        .grid { display: grid; gap: 10px; margin-bottom: 20px; }
+        body { font-family: sans-serif; margin: 0; padding: 0; background-color: #f0f0f0; color: #333; line-height: 1.4; }
+        
+        /* コンパクトになった固定ヘッダー */
+        #fixed-header { position: sticky; top: 0; z-index: 1000; background: #fff; border-bottom: 2px solid #ccc; padding: 5px 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .disclaimer { color: #f00; font-size: 0.8rem; font-weight: bold; border: 1px solid #f00; padding: 3px; background: #fff; text-align: center; margin-bottom: 5px; }
+        
+        #display-panel { display: flex; align-items: center; justify-content: space-between; border-radius: 8px; padding: 5px 10px; border: 2px solid #000; background-color: var(--bg-safe); }
+        .ratio-wrapper { text-align: center; flex: 0 0 40%; }
+        .status-label { font-size: 1rem; font-weight: bold; background: #000; color: #fff; padding: 1px 10px; border-radius: 4px; display: inline-block; margin-bottom: 2px; }
+        .result-main { font-size: 3rem; font-weight: 900; line-height: 1.0; }
+        .info-wrapper { text-align: left; flex: 1; margin-left: 10px; font-size: 0.9rem; font-weight: bold; border-left: 2px solid #ccc; padding-left: 10px; }
+        .info-item { display: block; margin-bottom: 2px; }
+
+        /* コンテンツエリア（スクロール可能） */
+        #content { padding: 15px; padding-bottom: 50px; }
+        h2 { font-size: 1.2rem; border-left: 8px solid #333; background: #ddd; padding: 5px 10px; margin: 15px 0 10px; border-radius: 2px; }
+        h3 { font-size: 1rem; margin: 10px 0 5px; color: #555; }
+        
+        /* 入力欄（スマホ標準テンキー呼び出し） */
+        .input-view { width: 100%; font-size: 1.5rem; padding: 10px; border: 2px solid #333; border-radius: 8px; box-sizing: border-box; text-align: right; font-weight: bold; margin-bottom: 10px; }
+        .red-note { color: #f00; font-size: 0.8rem; font-weight: bold; display: block; margin-top: 2px; margin-bottom: 10px; }
+        
+        /* グリッドボタン */
+        .grid { display: grid; gap: 8px; margin-bottom: 15px; }
         .cols-2 { grid-template-columns: repeat(2, 1fr); }
         .cols-3 { grid-template-columns: repeat(3, 1fr); }
         .cols-4 { grid-template-columns: repeat(4, 1fr); }
-        button { height: 85px; font-size: 1.5rem; font-weight: bold; border: 3px solid #666; border-radius: 10px; background: #fff; }
-        button.selected { background-color: #000 !important; color: #fff !important; }
-        .num-btn { background: #eee; height: 80px; font-size: 2.5rem; }
-        .clear-btn { background: #ffaa33; font-size: 2rem; }
+        button { height: 50px; font-size: 1rem; font-weight: bold; border: 2px solid #666; border-radius: 8px; background: #fff; color: #333; transition: 0.2s; }
+        button.selected { background-color: #000 !important; color: #fff !important; border-color: #000; }
+        button:disabled { opacity: 0.5; }
     </style>
 </head>
 <body>
     <div id="fixed-header">
-        <div class="disclaimer">本アプリの計算結果は参考値です。現場状況確認は別途必須。生じた損害について一切の責任を負いません。</div>
+        <div class="disclaimer">本アプリの計算結果は諸元表に基づく参考値です。生じた損害について一切の責任を負いません。</div>
         <div id="display-panel">
-            <div class="status-label" id="status-label">STEP 1を選択</div>
-            <div class="result-main"><span id="ratio-display">-- %</span></div>
-            <div class="warning-box-black" id="warning-text">後端半径：-- m</div>
-            <div class="result-detail" id="result-detail">定格: -- t / 負荷: -- t</div>
-            <div class="recommend-box"><div id="recommend-text">条件を入力してください。</div></div>
+            <div class="ratio-wrapper">
+                <div class="status-label" id="status-label">待機中</div>
+                <div class="result-main"><span id="ratio-display">--%</span></div>
+            </div>
+            <div class="info-wrapper" id="info-wrapper">
+                <span class="info-item txt-error" id="recommend-text">STEP 1から入力してください。</span>
+                <span class="info-item" id="result-detail" style="display:none;">定格: -- t / 負荷: -- t</span>
+            </div>
         </div>
     </div>
 
@@ -53,10 +62,10 @@
         <div id="step-area-all" style="display:none;">
             <h3>アウトリガー張出幅</h3>
             <div class="grid cols-4">
-                <button onclick="selectItem('outrigger', '7.8', this)" id="out-78">最大 7.8m</button>
+                <button onclick="selectItem('outrigger', '7.8', this)" id="out-78">最大 7.8</button>
                 <button onclick="selectItem('outrigger', '7.2', this)">7.2m</button>
                 <button onclick="selectItem('outrigger', '5.38', this)">5.38m</button>
-                <button onclick="selectItem('outrigger', '2.36', this)">最小 2.36m</button>
+                <button onclick="selectItem('outrigger', '2.36', this)">最小 2.36</button>
             </div>
             <h3>カウンタウエイト (CW)</h3>
             <div class="grid cols-2">
@@ -69,13 +78,13 @@
                 <button onclick="selectItem('mode', 'main', this)" id="mode-main">メインブーム</button>
                 <button onclick="selectItem('mode', 'jib', this)" id="mode-jib">ジブ使用</button>
             </div>
-            <div id="jib-options" style="display:none; background: #fff; border: 3px solid #333; padding: 10px; border-radius: 10px; margin-bottom: 15px;">
+            <div id="jib-options" style="display:none; background: #fff; border: 2px solid #333; padding: 10px; border-radius: 8px; margin-bottom: 15px;">
                 <div class="grid cols-3" id="jib-len-btns">
                     <button onclick="selectItem('jibLen', '8.4', this)">8.4m</button>
                     <button onclick="selectItem('jibLen', '13.1', this)">13.1m</button>
                     <button onclick="selectItem('jibLen', '17.7', this)">17.7m</button>
                 </div>
-                <div class="grid cols-4" id="jib-off-btns" style="margin-top:10px;">
+                <div class="grid cols-4" id="jib-off-btns" style="margin-top:8px;">
                     <button onclick="selectItem('offset', '5', this)">5°</button>
                     <button onclick="selectItem('offset', '25', this)">25°</button>
                     <button onclick="selectItem('offset', '45', this)">45°</button>
@@ -90,30 +99,25 @@
             </div>
 
             <h2>STEP 3：荷物情報</h2>
-            <h3>作業半径</h3>
-            <div class="input-view" id="box-radius"></div>
-            <div class="grid cols-3" id="numpad-radius"></div>
-            <h3>荷物の純重量</h3>
-            <div class="input-view" id="box-weight"></div>
-            <div class="grid cols-3" id="numpad-weight"></div>
+            <h3>作業半径（m）</h3>
+            <input type="number" class="input-view" id="radius" placeholder="0.0" oninput="inputNum(this)" step="0.1">
+            <h3>荷物の純重量（t）</h3>
+            <input type="number" class="input-view" id="weight" placeholder="0.0" oninput="inputNum(this)" step="0.1">
 
-            <h2>STEP 4：揚程計画</h2>
-            <h3>地切り高さ <span class="red-note">※地上部から荷物の下部まで</span></h3>
-            <div class="input-view" id="box-h1"></div>
-            <div class="grid cols-3" id="numpad-h1"></div>
+            <h2>STEP 4：揚程計画（m）</h2>
+            <h3>地切り高さ <span class="red-note">※地上から荷物の底面まで</span></h3>
+            <input type="number" class="input-view" id="h1" placeholder="0.0" oninput="inputNum(this)" step="0.1">
             <h3>荷物の高さ</h3>
-            <div class="input-view" id="box-h2"></div>
-            <div class="grid cols-3" id="numpad-h2"></div>
-            <h3>吊具の長さ <span class="red-note">※ブーム先端から吊具間1.9mは別途自動加算</span></h3>
-            <div class="input-view" id="box-h3"></div>
-            <div class="grid cols-3" id="numpad-h3"></div>
+            <input type="number" class="input-view" id="h2" placeholder="0.0" oninput="inputNum(this)" step="0.1">
+            <h3>吊具の長さ <span class="red-note">※先端〜吊具間1.9mは自動加算</span></h3>
+            <input type="number" class="input-view" id="h3" placeholder="0.0" oninput="inputNum(this)" step="0.1">
         </div>
     </div>
 
     <script>
         const specs = {
             "GR1000N": {
-                maxMain: 48.0, maxJib: 17.7, maxTotalHeight: 66.0,
+                maxTotalHeight: 66.0, maxReach: 65.7,
                 hooks: { "50t": {w: 0.43, l: 1.41}, "35t": {w: 0.30, l: 1.3}, "5t": {w: 0.11, l: 0.73} },
                 charts: {
                     "7.8_4.0": { 5:45.9, 10:21.3, 15:12.5, 20:8.75, 25:5.8, 30:4.4, 35:3.2, 40:1.95, 44:1.45 },
@@ -121,21 +125,12 @@
                     "2.36_4.0": { 5:12.0, 10:5.5, 15:2.8, 20:1.4 }
                 },
                 jibCharts: {
-                    "8.4": { "5": {10:4.0, 20:3.4, 30:2.5, 40:1.45}, "25": {20:3.05, 30:2.35}, "45": {20:2.3, 30:2.0}, "60": {20:1.4} }
+                    "8.4": { "5": {10:4.0, 20:3.4, 30:2.5, 40:1.45}, "25": {15:3.5, 20:3.05, 30:2.35}, "45": {15:2.45, 20:2.3} }
                 }
             }
         };
 
         let state = { crane: "", outrigger: '7.8', cw: '4.0', mode: 'main', jibLen: "", offset: "", hook: '50t', radius: "", weight: "", h1: "", h2: "", h3: "" };
-
-        function createNumpad(t) {
-            const c = document.getElementById('numpad-' + t);
-            for(let i=1; i<=9; i++) c.innerHTML += `<button class="num-btn" onclick="inputNum('${t}','${i}')">${i}</button>`;
-            c.innerHTML += `<button class="num-btn" onclick="inputNum('${t}','.')">.</button>`;
-            c.innerHTML += `<button class="num-btn" onclick="inputNum('${t}','0')">0</button>`;
-            c.innerHTML += `<button class="clear-btn" onclick="clearNum('${t}')">消す</button>`;
-        }
-        ['radius', 'weight', 'h1', 'h2', 'h3'].forEach(createNumpad);
 
         function selectItem(t, v, b) {
             if (t === 'mode' && v === 'jib') { state.jibLen = ""; state.offset = ""; document.querySelectorAll('#jib-len-btns button, #jib-off-btns button').forEach(x => x.classList.remove('selected')); }
@@ -143,90 +138,92 @@
             b.parentElement.querySelectorAll('button').forEach(x => x.classList.remove('selected'));
             b.classList.add('selected');
             if (t === 'crane') document.getElementById('step-area-all').style.display='block';
-            if (t === 'mode') { document.getElementById('jib-options').style.display = (v==='jib'?'block':'none'); state.hook = (v==='jib'?'5t':'50t'); }
+            if (t === 'mode') { document.getElementById('jib-options').style.display = (v==='jib'?'block':'none'); state.hook = (v==='jib'?'5t':'50t'); updateHookButtons(state.hook); }
             calculate();
         }
 
-        function inputNum(t, v) { state[t] += v; updateView(t); calculate(); }
-        function clearNum(t) { state[t] = ""; updateView(t); calculate(); }
-        function updateView(t) {
-            const b = document.getElementById('box-' + t);
-            b.innerHTML = state[t] === "" ? `<span style="color:#ccc">入力</span>` : `<span>${state[t]}</span><span style="font-size:1.5rem"> ${t==='weight'?'t':'m'}</span>`;
+        function updateHookButtons(h) {
+            document.querySelectorAll('#hook-50, #hook-35, #hook-5').forEach(btn => btn.classList.remove('selected'));
+            if(h==='50t') document.getElementById('hook-50').classList.add('selected');
+            if(h==='35t') document.getElementById('hook-35').classList.add('selected');
+            if(h==='5t') document.getElementById('hook-5').classList.add('selected');
+        }
+
+        function inputNum(input) {
+            state[input.id] = input.value;
+            calculate();
         }
 
         function calculate() {
             if (!state.crane) return;
             const sp = specs[state.crane];
-            const rawRadius = parseFloat(state.radius) || 0;
-            const r_ceil = Math.ceil(rawRadius);
+            const rawR = parseFloat(state.radius) || 0;
+            const r_ceil = Math.ceil(rawR);
             const w_val = parseFloat(state.weight) || 0;
-            const hook = sp.hooks[state.hook];
-            const h_val = (parseFloat(state.h1)||0) + (parseFloat(state.h2)||0) + (parseFloat(state.h3)||0) + 1.9 + hook.l;
-            const len = Math.sqrt(rawRadius * rawRadius + h_val * h_val);
-            const angle = (rawRadius > 0) ? Math.atan(h_val / rawRadius) * (180 / Math.PI) : 0;
+            const h_val = (parseFloat(state.h1)||0) + (parseFloat(state.h2)||0) + (parseFloat(state.h3)||0) + 1.9 + sp.hooks[state.hook].l;
+            const len = Math.sqrt(rawR * rawR + h_val * h_val);
 
             const ratioDisp = document.getElementById('ratio-display');
             const panel = document.getElementById('display-panel');
             const statusLabel = document.getElementById('status-label');
+            const recommendText = document.getElementById('recommend-text');
+            const resultDetail = document.getElementById('result-detail');
 
+            // 未入力チェック
             let missing = [];
-            if (!state.radius) missing.push("作業半径");
-            if (!state.weight) missing.push("荷物の純重量");
-            if (!state.h1) missing.push("地切り高さ");
-            if (!state.h2) missing.push("荷物の高さ");
-            if (!state.h3) missing.push("吊り具の長さ");
+            if (!state.radius) missing.push("半径");
+            if (!state.weight) missing.push("重量");
+            if (!state.h1) missing.push("地切り");
+            if (!state.h2) missing.push("荷高");
+            if (!state.h3) missing.push("吊具");
             if (state.mode === 'jib' && (!state.jibLen || !state.offset)) missing.push("ジブ構成");
 
             if (missing.length > 0) {
-                ratioDisp.innerText = "-- %"; statusLabel.innerText = "未入力あり";
-                panel.style.backgroundColor = 'var(--bg-safe)';
-                document.getElementById('recommend-text').innerHTML = `<span class="txt-error">以下を入力：</span><br>・${missing.join(' ・')}`;
+                ratioDisp.innerText = "--%"; statusLabel.innerText = "未入力あり";
+                panel.style.backgroundColor = 'var(--bg-danger)';
+                recommendText.innerHTML = `<span class="txt-error">以下を入力： ${missing.join(', ')}</span>`;
+                resultDetail.style.display = 'none';
                 return;
             }
 
-            // --- 物理限界チェック（リミッター） ---
-            if (h_val > sp.maxTotalHeight || len > (sp.maxMain + sp.maxJib)) {
-                ratioDisp.innerText = "限界超え";
-                statusLabel.innerText = "【不可】能力外";
+            // 物理限界チェック
+            if (h_val > sp.maxTotalHeight || len > sp.maxReach) {
+                ratioDisp.innerText = "限界"; statusLabel.innerText = "能力外";
                 panel.style.backgroundColor = 'var(--bg-error)';
-                document.getElementById('recommend-text').innerHTML = `<span class="txt-error">100t機の物理的限界を超えています！</span><br>高さ: ${h_val.toFixed(1)}m (最大約66m)`;
+                recommendText.innerHTML = `<span class="txt-error">100t機の物理的限界を超えています！</span>`;
+                resultDetail.style.display = 'none';
                 return;
             }
 
-            let recText = `必要高さ: ${h_val.toFixed(2)}m / 必要長さ: ${len.toFixed(2)}m<br>起伏角度: ${angle.toFixed(1)}°<br>`;
-            if (len > sp.maxMain && state.mode === 'main') {
-                recText += `<span class="txt-error">【メイン限界】ジブを使用してください</span>`;
-            } else {
-                recText += `<span style="color:var(--success)">判定結果を表示中</span>`;
-            }
-            document.getElementById('recommend-text').innerHTML = recText;
+            // メイン限界チェック
+            if (len > 48.0 && state.mode === 'main') {
+                recommendText.innerHTML = `<span class="txt-error">【メイン限界】ジブを使用してください</span>`;
+            } else { recommendText.innerHTML = `<span class="txt-success">★判定結果を表示中</span>`; }
+            resultDetail.style.display = 'block';
 
             let rated = 0;
             if (state.mode === 'main') {
                 let chartKey = (state.outrigger === '2.36') ? `2.36_${state.cw}` : `7.8_${state.cw}`;
-                const chart = sp.charts[chartKey];
-                rated = chart[r_ceil] || (r_ceil < 5 ? chart[5] : 0);
-                if (r_ceil > 44 || len > sp.maxMain) rated = 0;
+                rated = sp.charts[chartKey][r_ceil] || (r_ceil < 5 ? sp.charts[chartKey][5] : 0);
+                if (r_ceil > 44 || len > 48.0) rated = 0;
             } else {
-                const jibSet = sp.jibCharts[state.jibLen]?.[state.offset];
-                rated = jibSet?.[r_ceil] || 0;
+                rated = sp.jibCharts[state.jibLen]?.[state.offset]?.[r_ceil] || 0;
                 if (state.outrigger !== '7.8') rated = 0;
             }
 
-            const total = w_val + hook.w;
+            const total = w_val + sp.hooks[state.hook].w;
             const ratio = rated > 0 ? (total / rated) * 100 : 0;
 
             if (rated === 0) {
                 ratioDisp.innerText = "範囲外"; statusLabel.innerText = "不可";
                 panel.style.backgroundColor = 'var(--bg-error)';
-                document.getElementById('result-detail').innerText = `定格なし / 負荷: ${total.toFixed(2)}t`;
+                resultDetail.innerText = `定格なし / 負荷: ${total.toFixed(1)}t`;
             } else {
-                ratioDisp.innerText = ratio.toFixed(1) + "%";
-                statusLabel.innerText = ratio >= 100 ? "重量オーバー" : "揚重判定OK";
-                document.getElementById('result-detail').innerText = `定格(${r_ceil}m): ${rated.toFixed(2)}t / 負荷合計: ${total.toFixed(2)}t`;
+                ratioDisp.innerText = Math.round(ratio) + "%";
+                statusLabel.innerText = ratio >= 100 ? "オーバー" : "判定OK";
+                resultDetail.innerText = `定格(${r_ceil}m): ${rated.toFixed(1)}t / 負荷合計: ${total.toFixed(1)}t`;
                 panel.style.backgroundColor = ratio >= 100 ? 'var(--bg-error)' : (ratio >= 90 ? 'var(--bg-danger)' : (ratio >= 80 ? 'var(--bg-caution)' : '#fff'));
             }
-            document.getElementById('warning-text').innerText = `後端半径：${state.cw === '4.0' ? '3.9' : '3.54'}m`;
         }
     </script>
 </body>
