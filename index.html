@@ -160,4 +160,91 @@
             document.querySelectorAll('#hook-50, #hook-35, #hook-5').forEach(btn => btn.classList.remove('selected'));
             if(h==='50t') document.getElementById('hook-50').classList.add('selected');
             if(h==='35t') document.getElementById('hook-35').classList.add('selected');
-            if(h==='5t') document.getElementById('hook-5').classList.add('
+            if(h==='5t') document.getElementById('hook-5').classList.add('selected');
+        }
+
+        function inputNum(input) { state[input.id] = input.value; calculate(); }
+
+        // --- 全数値リセット関数 ---
+        function resetAll() {
+            state = { crane: state.crane, outrigger: '7.8', cw: '4.0', mode: 'main', jibLen: "", offset: "", hook: '50t', radius: "", weight: "", h1: "", h2: "", h3: "" };
+            document.querySelectorAll('.input-view').forEach(el => el.value = "");
+            document.querySelectorAll('button').forEach(el => el.classList.remove('selected'));
+            if (state.crane) document.getElementById('btn-GR1000N').classList.add('selected');
+            document.getElementById('jib-options').style.display = 'none';
+            calculate();
+        }
+
+        function calculate() {
+            if (!state.crane) return;
+            const sp = specs[state.crane];
+            const rawR = parseFloat(state.radius) || 0;
+            const r_ceil = Math.ceil(rawR);
+            const w_val = parseFloat(state.weight) || 0;
+            const h_val = (parseFloat(state.h1)||0) + (parseFloat(state.h2)||0) + (parseFloat(state.h3)||0) + 1.9 + sp.hooks[state.hook].l;
+            const len = Math.sqrt(rawR * rawR + h_val * h_val);
+
+            const ratioDisp = document.getElementById('ratio-display');
+            const panel = document.getElementById('display-panel');
+            const statusLabel = document.getElementById('status-label');
+            const recText = document.getElementById('recommend-text');
+            const detail = document.getElementById('result-detail');
+            const sugBox = document.getElementById('suggestion-box');
+
+            sugBox.style.display = 'none';
+
+            let missing = [];
+            if (!state.radius) missing.push("半径"); if (!state.weight) missing.push("重量");
+            if (!state.h1 || !state.h2 || !state.h3) missing.push("揚程");
+            if (state.mode === 'jib' && (!state.jibLen || !state.offset)) missing.push("ジブ構成");
+
+            if (missing.length > 0) {
+                ratioDisp.innerText = "--%"; statusLabel.innerText = "待機中";
+                panel.style.backgroundColor = 'var(--waiting)';
+                recText.innerHTML = `<span style="color:#f00">入力してください</span>`;
+                detail.innerText = ""; return;
+            }
+
+            let rated = 0;
+            if (state.mode === 'main') {
+                let chartKey = `${state.outrigger}_${state.cw}`;
+                const chart = sp.charts[chartKey] || sp.charts["2.36_4.0"];
+                rated = chart[r_ceil] || (r_ceil < 5 ? chart[5] : 0);
+                if (r_ceil > 44 || len > 48.0) rated = 0;
+            } else {
+                let baseJib = sp.jibCharts[state.jibLen]?.[state.offset]?.[r_ceil] || 0;
+                rated = (state.cw === '0.0') ? baseJib * 0.7 : baseJib; 
+                if (state.outrigger !== '7.8') rated = 0;
+            }
+
+            const total = w_val + sp.hooks[state.hook].w;
+            const ratio = rated > 0 ? (total / rated) * 100 : 0;
+            
+            // ジブ提案
+            if (state.mode === 'main' && (rated === 0 || ratio >= 100)) {
+                let jibCheck = sp.jibCharts["8.4"]?.["5"]?.[r_ceil] || 0;
+                if (jibCheck > total && state.outrigger === '7.8') {
+                    sugBox.innerText = "【提案】ジブ使用で揚重可能です";
+                    sugBox.style.display = 'block';
+                }
+            }
+
+            recText.innerHTML = `<span style="color:#000">H:${h_val.toFixed(1)}m / L:${len.toFixed(1)}m / CW:${state.cw}t</span>`;
+            
+            if (rated === 0) {
+                ratioDisp.innerText = "不可"; statusLabel.innerText = "範囲外";
+                panel.style.backgroundColor = 'var(--bg-error)';
+                detail.innerText = `定格なし / 負荷合計: ${total.toFixed(1)}t`;
+            } else {
+                ratioDisp.innerText = Math.round(ratio) + "%";
+                statusLabel.innerText = ratio >= 100 ? "オーバー" : "判定OK";
+                detail.innerText = `定格(${r_ceil}m): ${rated.toFixed(1)}t / 負荷合計: ${total.toFixed(1)}t`;
+                if (ratio >= 100) panel.style.backgroundColor = 'var(--bg-error)';
+                else if (ratio >= 90) panel.style.backgroundColor = 'var(--bg-danger)';
+                else if (ratio >= 80) panel.style.backgroundColor = 'var(--bg-caution)';
+                else panel.style.backgroundColor = 'var(--bg-success)';
+            }
+        }
+    </script>
+</body>
+</html>
