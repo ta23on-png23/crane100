@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>クレーン判定アプリ（仮） V51</title>
+    <title>クレーン判定アプリ（仮） V52</title>
     <style>
         :root { --bg-safe: #ffffff; --bg-caution: #ffff99; --bg-danger: #ffe0e0; --bg-error: #ffcccc; --bg-success: #ccffcc; --accent: #007bff; --success: #28a745; --waiting: #f0f0f0; --info-blue: #0000cd; }
         body { font-family: sans-serif; margin: 0; padding: 0; background-color: #f0f0f0; color: #333; }
@@ -99,8 +99,11 @@
             <input type="text" inputmode="decimal" class="input-view" id="radius" placeholder="0.0" oninput="validateAndInput(this)">
             <h3>荷物の純重量（t）</h3>
             <input type="text" inputmode="decimal" class="input-view" id="weight" placeholder="0.0" oninput="validateAndInput(this)">
+            
             <h2>STEP 4：揚程計画（m）</h2>
-            <h3>地切り高さ <span class="red-note">※地上から底面まで</span></h3>
+            <h3>着地場所の高さ <span class="red-note">※屋上など荷物を置く場所の高さ</span></h3>
+            <input type="text" inputmode="decimal" class="input-view" id="h4" placeholder="0.0" oninput="validateAndInput(this)">
+            <h3>地切り高さ <span class="red-note">※地上の荷物を浮かせる高さ</span></h3>
             <input type="text" inputmode="decimal" class="input-view" id="h1" placeholder="0.0" oninput="validateAndInput(this)">
             <h3>荷物の高さ</h3>
             <input type="text" inputmode="decimal" class="input-view" id="h2" placeholder="0.0" oninput="validateAndInput(this)">
@@ -126,7 +129,7 @@
             }
         };
 
-        let state = { crane: "", outrigger: '7.8', cw: '4.0', mode: 'main', jibLen: "", offset: "", hook: '50t', radius: "", weight: "", h1: "", h2: "", h3: "" };
+        let state = { crane: "", outrigger: '7.8', cw: '4.0', mode: 'main', jibLen: "", offset: "", hook: '50t', radius: "", weight: "", h1: "", h2: "", h3: "", h4: "" };
 
         function validateAndInput(el) {
             let val = el.value.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)).replace(/．/g, ".").replace(/[^0-9.]/g, "");
@@ -135,7 +138,6 @@
         }
 
         function selectItem(t, v, b) {
-            // ジブボタンが押されたときのリセット処理
             if (t === 'mode' && v === 'jib') {
                 state.jibLen = ""; state.offset = ""; 
                 document.querySelectorAll('#jib-len-btns button, #jib-off-btns button').forEach(x => x.classList.remove('selected'));
@@ -160,7 +162,7 @@
         }
 
         function resetAll() {
-            state = { crane: state.crane, outrigger: '7.8', cw: '4.0', mode: 'main', jibLen: "", offset: "", hook: '50t', radius: "", weight: "", h1: "", h2: "", h3: "" };
+            state = { crane: state.crane, outrigger: '7.8', cw: '4.0', mode: 'main', jibLen: "", offset: "", hook: '50t', radius: "", weight: "", h1: "", h2: "", h3: "", h4: "" };
             document.querySelectorAll('.input-view').forEach(el => el.value = "");
             document.querySelectorAll('button').forEach(el => el.classList.remove('selected'));
             if (state.crane) document.getElementById('btn-GR1000N').classList.add('selected');
@@ -174,7 +176,11 @@
             const rawR = parseFloat(state.radius) || 0;
             const r_ceil = Math.ceil(rawR);
             const w_val = parseFloat(state.weight) || 0;
-            const h_val = (parseFloat(state.h1)||0) + (parseFloat(state.h2)||0) + (parseFloat(state.h3)||0) + 1.9 + sp.hooks[state.hook].l;
+            
+            // 地切り高さ or 着地場所の高さ、高い方を採用
+            const h_base = Math.max(parseFloat(state.h1)||0, parseFloat(state.h4)||0);
+            const h_val = h_base + (parseFloat(state.h2)||0) + (parseFloat(state.h3)||0) + 1.9 + sp.hooks[state.hook].l;
+            
             const len = Math.sqrt(rawR * rawR + h_val * h_val);
 
             const rDisp = document.getElementById('ratio-display');
@@ -223,10 +229,10 @@
 
             recT.innerHTML = `<span style="color:#000">H:${h_val.toFixed(1)}m / L:${len.toFixed(1)}m / CW:${state.cw}t</span>`;
             
-            if (rated === 0) {
+            if (rated === 0 || h_val > sp.maxHeight) {
                 rDisp.innerText = "不可"; sLabel.innerText = "範囲外";
                 panel.style.backgroundColor = 'var(--bg-error)';
-                det.innerText = `定格なし / 負荷: ${total.toFixed(1)}t`;
+                det.innerText = (h_val > sp.maxHeight) ? `高さ限界超え(${h_val.toFixed(1)}m)` : `定格なし / 負荷: ${total.toFixed(1)}t`;
             } else {
                 const rounded = Math.round(ratio);
                 rDisp.innerText = rounded + "%";
