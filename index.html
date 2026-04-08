@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>クレーン判定アプリ（仮） V50</title>
+    <title>クレーン判定アプリ（仮） V51</title>
     <style>
         :root { --bg-safe: #ffffff; --bg-caution: #ffff99; --bg-danger: #ffe0e0; --bg-error: #ffcccc; --bg-success: #ccffcc; --accent: #007bff; --success: #28a745; --waiting: #f0f0f0; --info-blue: #0000cd; }
         body { font-family: sans-serif; margin: 0; padding: 0; background-color: #f0f0f0; color: #333; }
@@ -20,11 +20,7 @@
         #content { padding: 10px; padding-bottom: 60px; }
         h2 { font-size: 1.1rem; border-left: 8px solid #333; background: #ddd; padding: 4px 10px; margin: 12px 0 8px; }
         h3 { font-size: 0.95rem; margin: 8px 0 4px; color: #555; }
-        
-        /* 入力欄のデザイン（半角固定用） */
         .input-view { width: 100%; font-size: 1.6rem; padding: 10px; border: 2px solid #333; border-radius: 8px; box-sizing: border-box; text-align: right; font-weight: bold; margin-bottom: 8px; background-color: #fff; }
-        .input-view:focus { border-color: var(--accent); outline: none; background-color: #f9f9ff; }
-        
         .red-note { color: #f00; font-size: 0.8rem; font-weight: bold; margin-bottom: 8px; display: block; }
         .grid { display: grid; gap: 6px; margin-bottom: 12px; }
         .cols-2 { grid-template-columns: repeat(2, 1fr); }
@@ -32,7 +28,7 @@
         .cols-4 { grid-template-columns: repeat(4, 1fr); }
         button { height: 48px; font-size: 0.95rem; font-weight: bold; border: 2px solid #666; border-radius: 6px; background: #fff; }
         button.selected { background-color: #000 !important; color: #fff !important; }
-        .suggestion { color: var(--info-blue); font-size: 0.85rem; margin-top: 2px; }
+        .suggestion { color: var(--info-blue); font-size: 0.85rem; margin-top: 2px; font-weight: 900; }
     </style>
 </head>
 <body>
@@ -85,7 +81,7 @@
                     <button onclick="selectItem('jibLen', '13.1', this)">13.1m</button>
                     <button onclick="selectItem('jibLen', '17.7', this)">17.7m</button>
                 </div>
-                <div class="grid cols-4" style="margin-top:8px;">
+                <div class="grid cols-4" id="jib-off-btns" style="margin-top:8px;">
                     <button onclick="selectItem('offset', '5', this)">5°</button>
                     <button onclick="selectItem('offset', '25', this)">25°</button>
                     <button onclick="selectItem('offset', '45', this)">45°</button>
@@ -132,34 +128,35 @@
 
         let state = { crane: "", outrigger: '7.8', cw: '4.0', mode: 'main', jibLen: "", offset: "", hook: '50t', radius: "", weight: "", h1: "", h2: "", h3: "" };
 
-        // ★半角固定＆自動変換ロジック
         function validateAndInput(el) {
-            let val = el.value;
-            // 全角数字を半角に変換
-            val = val.replace(/[０-９]/g, function(s) {
-                return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
-            });
-            // 全角ドットを半角に変換
-            val = val.replace(/．/g, ".");
-            // 数字とドット以外の不要な文字を除去
-            val = val.replace(/[^0-9.]/g, "");
-            // 小数点が複数ある場合は最初の1つだけ残す
-            const parts = val.split(".");
-            if (parts.length > 2) val = parts[0] + "." + parts.slice(1).join("");
-            
-            el.value = val;
-            state[el.id] = val;
-            calculate();
+            let val = el.value.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)).replace(/．/g, ".").replace(/[^0-9.]/g, "");
+            const parts = val.split("."); if (parts.length > 2) val = parts[0] + "." + parts.slice(1).join("");
+            el.value = val; state[el.id] = val; calculate();
         }
 
         function selectItem(t, v, b) {
-            if (t === 'mode' && v === 'jib') { state.jibLen = ""; state.offset = ""; }
+            // ジブボタンが押されたときのリセット処理
+            if (t === 'mode' && v === 'jib') {
+                state.jibLen = ""; state.offset = ""; 
+                document.querySelectorAll('#jib-len-btns button, #jib-off-btns button').forEach(x => x.classList.remove('selected'));
+            }
             state[t] = v;
             b.parentElement.querySelectorAll('button').forEach(x => x.classList.remove('selected'));
             b.classList.add('selected');
             if (t === 'crane') document.getElementById('step-area-all').style.display='block';
-            if (t === 'mode') document.getElementById('jib-options').style.display = (v==='jib'?'block':'none');
+            if (t === 'mode') {
+                document.getElementById('jib-options').style.display = (v==='jib'?'block':'none');
+                state.hook = (v==='jib'?'5t':'50t');
+                updateHookButtons(state.hook);
+            }
             calculate();
+        }
+
+        function updateHookButtons(h) {
+            document.querySelectorAll('#hook-50, #hook-35, #hook-5').forEach(btn => btn.classList.remove('selected'));
+            const id = h === '50t' ? 'hook-50' : (h === '35t' ? 'hook-35' : 'hook-5');
+            const target = document.getElementById(id);
+            if(target) target.classList.add('selected');
         }
 
         function resetAll() {
@@ -180,14 +177,14 @@
             const h_val = (parseFloat(state.h1)||0) + (parseFloat(state.h2)||0) + (parseFloat(state.h3)||0) + 1.9 + sp.hooks[state.hook].l;
             const len = Math.sqrt(rawR * rawR + h_val * h_val);
 
-            const ratioDisp = document.getElementById('ratio-display');
+            const rDisp = document.getElementById('ratio-display');
             const panel = document.getElementById('display-panel');
-            const statusLabel = document.getElementById('status-label');
-            const recText = document.getElementById('recommend-text');
-            const detail = document.getElementById('result-detail');
-            const sugBox = document.getElementById('suggestion-box');
+            const sLabel = document.getElementById('status-label');
+            const recT = document.getElementById('recommend-text');
+            const det = document.getElementById('result-detail');
+            const sBox = document.getElementById('suggestion-box');
 
-            sugBox.style.display = 'none';
+            sBox.style.display = 'none';
 
             let missing = [];
             if (!state.radius) missing.push("半径"); if (!state.weight) missing.push("重量");
@@ -195,10 +192,10 @@
             if (state.mode === 'jib' && (!state.jibLen || !state.offset)) missing.push("ジブ構成");
 
             if (missing.length > 0) {
-                ratioDisp.innerText = "--%"; statusLabel.innerText = "待機中";
+                rDisp.innerText = "--%"; sLabel.innerText = "待機中";
                 panel.style.backgroundColor = 'var(--waiting)';
-                recText.innerHTML = `<span style="color:#f00">入力してください</span>`;
-                detail.innerText = ""; return;
+                recT.innerHTML = `<span style="color:#f00">入力してください</span>`;
+                det.innerText = ""; return;
             }
 
             let rated = 0;
@@ -217,23 +214,24 @@
             const ratio = rated > 0 ? (total / rated) * 100 : 0;
             
             if (state.mode === 'main' && (rated === 0 || ratio >= 100)) {
-                let jibCheck = sp.jibCharts["8.4"]?.["5"]?.[r_ceil] || 0;
-                if (jibCheck > total && state.outrigger === '7.8') {
-                    sugBox.innerText = "【提案】ジブ使用で揚重可能です";
-                    sugBox.style.display = 'block';
+                let jCheck = sp.jibCharts["8.4"]?.["5"]?.[r_ceil] || 0;
+                if (jCheck > total && state.outrigger === '7.8') {
+                    sBox.innerText = "【提案】ジブ使用で揚重可能です";
+                    sBox.style.display = 'block';
                 }
             }
 
-            recText.innerHTML = `<span style="color:#000">H:${h_val.toFixed(1)}m / L:${len.toFixed(1)}m / CW:${state.cw}t</span>`;
+            recT.innerHTML = `<span style="color:#000">H:${h_val.toFixed(1)}m / L:${len.toFixed(1)}m / CW:${state.cw}t</span>`;
             
             if (rated === 0) {
-                ratioDisp.innerText = "不可"; statusLabel.innerText = "範囲外";
+                rDisp.innerText = "不可"; sLabel.innerText = "範囲外";
                 panel.style.backgroundColor = 'var(--bg-error)';
-                detail.innerText = `定格なし / 負荷: ${total.toFixed(1)}t`;
+                det.innerText = `定格なし / 負荷: ${total.toFixed(1)}t`;
             } else {
-                ratioDisp.innerText = Math.round(ratio) + "%";
-                statusLabel.innerText = ratio >= 100 ? "オーバー" : "揚重判定OK";
-                detail.innerText = `定格(${r_ceil}m): ${rated.toFixed(1)}t / 負荷: ${total.toFixed(1)}t`;
+                const rounded = Math.round(ratio);
+                rDisp.innerText = rounded + "%";
+                sLabel.innerText = ratio >= 100 ? "オーバー" : "揚重判定OK";
+                det.innerText = `定格(${r_ceil}m): ${rated.toFixed(1)}t / 負荷: ${total.toFixed(1)}t`;
                 if (ratio >= 100) panel.style.backgroundColor = 'var(--bg-error)';
                 else if (ratio >= 90) panel.style.backgroundColor = 'var(--bg-danger)';
                 else if (ratio >= 80) panel.style.backgroundColor = 'var(--bg-caution)';
