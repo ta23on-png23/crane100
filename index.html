@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>クレーン施工提案アプリ V68</title>
+    <title>クレーン施工提案アプリ V69</title>
     <style>
         :root { --bg-success: #ccffcc; --bg-caution: #ffff99; --bg-error: #ffcccc; --accent: #000080; }
         body { font-family: sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
@@ -16,6 +16,9 @@
         .input-side { width: 42%; padding: 15px; overflow-y: auto; border-right: 2px solid #ccc; background: #eee; }
         .output-side { width: 58%; padding: 15px; overflow-y: auto; background: #fff; }
         h2 { font-size: 1.1rem; border-left: 10px solid var(--accent); background: #ddd; padding: 6px 15px; margin: 10px 0; border-radius: 4px; }
+        .outrigger-selector { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-bottom: 10px; }
+        .out-btn { height: 45px; font-size: 0.8rem; font-weight: bold; border: 2px solid #666; border-radius: 5px; background: #fff; }
+        .out-btn.selected { background: #333 !important; color: #fff !important; }
         .input-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
         .clear-box-btn { width: 45px; height: 45px; background: #999; color: #fff; border: none; border-radius: 8px; font-size: 1.5rem; font-weight: bold; flex-shrink: 0; }
         label { font-size: 0.9rem; font-weight: bold; color: #444; display: block; margin-bottom: 2px; }
@@ -24,43 +27,35 @@
         .card-header { display: flex; align-items: center; margin-bottom: 8px; }
         .suggest-ratio { flex: 0 0 85px; text-align: center; font-size: 2.2rem; font-weight: 900; border-right: 2px solid #ccc; padding-right: 10px; }
         .suggest-info { flex: 1; padding-left: 15px; font-size: 1.1rem; font-weight: bold; }
+        .angle-info { color: #d35400; display: block; margin-bottom: 4px; font-size: 1rem; }
         .evidence-box { background: #f0f0f0; border: 1px dashed #666; padding: 8px; font-size: 0.8rem; border-radius: 6px; line-height: 1.4; }
     </style>
 </head>
 <body>
-    <header>
-        <div class="app-title">クレーン施工提案アプリ</div>
-        <div id="crane-buttons" class="crane-selector"></div>
-    </header>
+    <header><div class="app-title">クレーン施工提案アプリ</div><div id="crane-buttons" class="crane-selector"></div></header>
     <div class="main-layout">
         <div class="input-side">
+            <h2>アウトリガー張出 (m)</h2>
+            <div id="out-btns" class="outrigger-selector">
+                <button class="out-btn selected" onclick="setOut('4.75', this)">最大<br>4.75</button>
+                <button class="out-btn" onclick="setOut('4.3', this)">4.3</button>
+                <button class="out-btn" onclick="setOut('3.7', this)">3.7</button>
+                <button class="out-btn" onclick="setOut('2.7', this)">2.7</button>
+                <button class="out-btn" onclick="setOut('1.64', this)">最小<br>1.64</button>
+            </div>
             <h2>条件入力</h2>
             <div id="input-fields"></div>
         </div>
-        <div class="output-side">
-            <h2>推奨構成案</h2>
-            <div id="suggestion-list"></div>
-        </div>
+        <div class="output-side"><h2>推奨構成案</h2><div id="suggestion-list"></div></div>
     </div>
-
     <script>
         let CRANE_DB = {};
-        let state = { crane: "", radius: "", weight: "", h_max: "", h_load: "", h_tool: "" };
+        let state = { crane: "", out: "4.75", radius: "", weight: "", h_max: "", h_load: "", h_tool: "" };
 
-        // データの読み込み（キャッシュ回避のためタイムスタンプを付与）
-        fetch('cranes.json?' + new Date().getTime())
-            .then(res => res.json())
-            .then(data => { 
-                CRANE_DB = data; 
-                initApp(); 
-            })
-            .catch(err => {
-                alert("データの読み込みに失敗しました。cranes.jsonが存在するか確認してください。");
-            });
+        fetch('cranes.json?' + new Date().getTime()).then(res => res.json()).then(data => { CRANE_DB = data; initApp(); });
 
         function initApp() {
             const btnArea = document.getElementById('crane-buttons');
-            btnArea.innerHTML = "";
             Object.keys(CRANE_DB).forEach(key => {
                 const btn = document.createElement('button');
                 btn.className = 'crane-btn';
@@ -73,38 +68,24 @@
                 };
                 btnArea.appendChild(btn);
             });
-
-            const fields = [
-                {id:'radius', l:'作業半径 (m)'}, 
-                {id:'weight', l:'純重量 (t)'},
-                {id:'h_max', l:'着地高 (m)'},
-                {id:'h_load', l:'荷物高 (m)'},
-                {id:'h_tool', l:'吊具長 (m)'}
-            ];
+            const fields = [{id:'radius', l:'作業半径 (m)'}, {id:'weight', l:'純重量 (t)'}, {id:'h_max', l:'着地高 (m)'}, {id:'h_load', l:'荷物高 (m)'}, {id:'h_tool', l:'吊具長 (m)'}];
             const area = document.getElementById('input-fields');
-            area.innerHTML = "";
             fields.forEach(f => {
-                area.innerHTML += `
-                    <div class="input-group">
-                        <label>${f.l}</label>
-                        <div class="input-row">
-                            <button class="clear-box-btn" onclick="clearField('${f.id}')">×</button>
-                            <div style="flex:1">
-                                <input type="text" inputmode="decimal" class="input-view" id="${f.id}" oninput="validateAndInput(this)">
-                            </div>
-                        </div>
-                    </div>`;
+                area.innerHTML += `<div class="input-group"><label>${f.l}</label><div class="input-row"><button class="clear-box-btn" onclick="clearField('${f.id}')">×</button><div style="flex:1"><input type="text" inputmode="decimal" class="input-view" id="${f.id}" oninput="validateAndInput(this)"></div></div></div>`;
             });
-            document.getElementById('suggestion-list').innerHTML = `<div style="color:#888; text-align:center; padding:60px;">機種を選択してください。</div>`;
+        }
+
+        function setOut(val, btn) {
+            state.out = val;
+            document.querySelectorAll('.out-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            propose();
         }
 
         function clearField(id) { document.getElementById(id).value = ""; state[id] = ""; propose(); }
-        
         function validateAndInput(el) {
             let val = el.value.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)).replace(/．/g, ".").replace(/[^0-9.]/g, "");
-            el.value = val; 
-            state[el.id] = val; 
-            propose();
+            el.value = val; state[el.id] = val; propose();
         }
 
         function propose() {
@@ -113,51 +94,64 @@
                 list.innerHTML = `<div style="color:#888; text-align:center; padding:60px;">機種を選択し、半径と重量を入力してください。</div>`;
                 return;
             }
-
             const crane = CRANE_DB[state.crane];
             const r_in = parseFloat(state.radius);
             const w_in = parseFloat(state.weight);
-            const outTable = crane.outriggers["4.75"];
+            const outSet = crane.outriggers[state.out] || crane.outriggers["4.75"];
             
             let results = [];
+            // ブーム
             crane.booms.forEach(len => {
-                const chart = outTable.data[len.toString()];
+                const chart = outSet.data[len.toString()];
                 if(!chart) return;
-                
-                // 次点半径検索（例: 10.0 -> 10.0, 10.1 -> 11.0）
-                const dists = Object.keys(chart).map(Number).sort((a,b)=>a-b);
+                const dists = Object.keys(chart).filter(k => k !== 'danger').map(Number).sort((a,b)=>a-b);
                 let refR = null;
                 for(let d of dists){ if(r_in <= d){ refR = d; break; } }
-                
                 if (refR !== null) {
-                    let rated = chart[refR.toFixed(1)];
-                    // 小数点なしでも検索を試みる
-                    if (rated === undefined) rated = chart[refR.toString()];
-                    
-                    if (rated !== undefined) {
-                        let totalW = w_in + crane.hookW.main;
-                        let ratio = (totalW / rated) * 100;
-                        
-                        if (ratio < 110) {
-                            results.push({
-                                len: len, ratio: Math.round(ratio), rated: rated, 
-                                total: totalW, refR: refR, page: outTable.page,
-                                parts: crane.boomParts[len.toString()]
-                            });
-                        }
+                    let rated = chart[refR.toFixed(1)] || chart[refR.toString()];
+                    let totalW = w_in + crane.hookW.main;
+                    let ratio = (totalW / rated) * 100;
+                    let angle = (len >= r_in) ? Math.acos(r_in / len) * (180 / Math.PI) : 0;
+                    if (ratio < 110) {
+                        results.push({
+                            type: 'ブーム', val: len, ratio: Math.round(ratio), rated: rated, 
+                            total: totalW, refR: refR, page: outSet.page, angle: angle.toFixed(1),
+                            parts: crane.boomParts[len.toString()]
+                        });
+                    }
+                }
+            });
+            // ジブ
+            crane.jibs.forEach(j => {
+                const dists = Object.keys(j.charts).map(Number).sort((a,b)=>a-b);
+                let refR = null;
+                for(let d of dists){ if(r_in <= d){ refR = d; break; } }
+                if (refR !== null) {
+                    let rated = j.charts[refR.toFixed(1)] || j.charts[refR.toString()];
+                    let totalW = w_in + crane.hookW.sub;
+                    let ratio = (totalW / rated) * 100;
+                    if (ratio < 110) {
+                        results.push({
+                            type: 'ジブ', val: j.len, ratio: Math.round(ratio), rated: rated, 
+                            total: totalW, refR: refR, page: '5', parts: j.parts
+                        });
                     }
                 }
             });
 
             results.sort((a,b) => a.ratio - b.ratio);
             if (results.length === 0) {
-                list.innerHTML = `<div style="color:#f00; text-align:center; padding:60px; font-weight:bold;">安全範囲外です（能力不足）</div>`;
+                list.innerHTML = `<div style="color:#f00; text-align:center; padding:60px; font-weight:bold;">安全範囲外です</div>`;
             } else {
                 list.innerHTML = results.map(res => `
                     <div class="suggestion-card" style="background-color: ${res.ratio < 80 ? 'var(--bg-success)' : (res.ratio < 90 ? 'var(--bg-caution)' : 'var(--bg-error)')}">
                         <div class="card-header">
                             <div class="suggest-ratio">${res.ratio}%</div>
-                            <div class="suggest-info">${res.len}mブーム / ${res.parts}本掛<br>定格: ${res.rated.toFixed(2)}t</div>
+                            <div class="suggest-info">
+                                <span class="badge ${res.type==='ジブ'?'badge-jib':''}">${res.type} ${res.val}m / ${res.parts}本掛</span><br>
+                                ${res.type==='ブーム' ? `<span class="angle-info">ブーム参考角度: ${res.angle}度</span>` : `諸元表記載角度参照`}
+                                定格: ${res.rated.toFixed(2)}t
+                            </div>
                         </div>
                         <div class="evidence-box">P.${res.page}参照 / 半径${res.refR.toFixed(1)}mの値を採用</div>
                     </div>`).join('');
