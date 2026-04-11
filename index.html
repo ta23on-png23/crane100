@@ -3,23 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>クレーン施工提案アプリ V71</title>
+    <title>クレーン施工提案アプリ V72</title>
     <style>
         :root { --bg-success: #ccffcc; --bg-caution: #ffff99; --bg-error: #ffcccc; --accent: #000080; --jib-red: #ff0000; }
         body { font-family: sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         header { background: #fff; padding: 10px; border-bottom: 2px solid #ccc; flex-shrink: 0; }
-        .app-title { color: var(--accent); font-size: 1.6rem; font-weight: 900; text-align: center; margin: 5px 0; }
-        .crane-selector { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 5px 0; }
-        .crane-btn { height: 60px; font-size: 1rem; font-weight: 900; border: 3px solid #666; border-radius: 8px; background: #fff; }
+        
+        /* 免責事項の復旧 */
+        .disclaimer { color: #f00; font-size: 0.75rem; font-weight: bold; text-align: center; border: 1px solid #f00; padding: 4px; margin-bottom: 8px; }
+        
+        .app-title { color: var(--accent); font-size: 1.6rem; font-weight: 900; text-align: center; margin-bottom: 8px; }
+        .crane-selector { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 5px; }
+        .crane-btn { height: 60px; font-size: 1rem; font-weight: 900; border: 3px solid #666; border-radius: 8px; background: #fff; line-height: 1.2; }
         .crane-btn.selected { background: var(--accent) !important; color: #fff !important; }
+        
         .main-layout { display: flex; flex: 1; overflow: hidden; }
         .input-side { width: 42%; padding: 15px; overflow-y: auto; border-right: 2px solid #ccc; background: #eee; }
         .output-side { width: 58%; padding: 15px; overflow-y: auto; background: #fff; }
+        
         h2 { font-size: 1.1rem; border-left: 10px solid var(--accent); background: #ddd; padding: 6px 15px; margin: 10px 0; border-radius: 4px; }
         .input-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
-        .clear-box-btn { width: 45px; height: 45px; background: #999; color: #fff; border: none; border-radius: 8px; font-size: 1.5rem; font-weight: bold; }
+        .clear-box-btn { width: 45px; height: 45px; background: #999; color: #fff; border: none; border-radius: 8px; font-size: 1.5rem; font-weight: bold; flex-shrink: 0; }
         label { font-size: 0.9rem; font-weight: bold; color: #444; display: block; margin-bottom: 2px; }
         .input-view { width: 100%; font-size: 1.7rem; padding: 8px; border: 3px solid #333; border-radius: 8px; box-sizing: border-box; text-align: right; font-weight: bold; }
+        
         .suggestion-card { border: 2px solid #333; border-radius: 12px; padding: 12px; margin-bottom: 12px; box-shadow: 0 3px 5px rgba(0,0,0,0.1); }
         .card-header { display: flex; align-items: center; margin-bottom: 8px; }
         .suggest-ratio { flex: 0 0 85px; text-align: center; font-size: 2.2rem; font-weight: 900; border-right: 2px solid #ccc; padding-right: 10px; }
@@ -32,7 +39,11 @@
     </style>
 </head>
 <body>
-    <header><div class="app-title">クレーン施工提案アプリ</div><div id="crane-buttons" class="crane-selector"></div></header>
+    <header>
+        <div class="disclaimer">参考値。現場確認必須。損害責任負いません。</div>
+        <div class="app-title">クレーン施工提案アプリ</div>
+        <div id="crane-buttons" class="crane-selector"></div>
+    </header>
     <div class="main-layout">
         <div class="input-side">
             <h2>条件入力</h2>
@@ -76,7 +87,7 @@
         function propose() {
             const list = document.getElementById('suggestion-list');
             if (!state.crane || !state.radius || !state.weight) {
-                list.innerHTML = `<div style="color:#888; text-align:center; padding:60px;">条件を入力してください。</div>`;
+                list.innerHTML = `<div style="color:#888; text-align:center; padding:60px;">機種を選択し、条件を入力してください。</div>`;
                 return;
             }
             const crane = CRANE_DB[state.crane];
@@ -125,7 +136,7 @@
                         if (ratio < 110) {
                             results.push({
                                 isJib: true, val: `${j.boomLen}m + ${j.jibLen}m`, ratio: Math.round(ratio), rated: rated, 
-                                total: totalW, refR: refR, page: j.page, angle: j.angleRef || '諸元表参照',
+                                total: totalW, refR: refR, page: j.page, angle: j.angleRef,
                                 parts: j.parts, outName: '最大(4.75m) 全周', danger: j.danger
                             });
                         }
