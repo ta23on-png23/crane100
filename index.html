@@ -1,189 +1,34 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>クレーン施工提案アプリ V87</title>
-    <style>
-        :root { --bg-success: #ccffcc; --bg-caution: #ffff99; --bg-error: #ffcccc; --accent: #000080; --jib-red: #ff0000; }
-        body { font-family: sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-        header { background: #fff; padding: 10px; border-bottom: 2px solid #ccc; flex-shrink: 0; }
-        .disclaimer { color: #f00; font-size: 0.8rem; font-weight: bold; text-align: center; border: 2px solid #f00; padding: 6px; margin-bottom: 8px; line-height: 1.4; border-radius: 4px; }
-        .app-title { color: var(--accent); font-size: 1.6rem; font-weight: 900; text-align: center; margin-bottom: 8px; }
-        .crane-selector { display: flex; justify-content: center; margin-bottom: 5px; }
-        .crane-btn { width: 80%; height: 60px; font-size: 1.1rem; font-weight: 900; border: 3px solid #666; border-radius: 8px; background: #fff; }
-        .crane-btn.selected { background: var(--accent) !important; color: #fff !important; }
-        .main-layout { display: flex; flex: 1; overflow: hidden; }
-        .input-side { width: 42%; padding: 15px; overflow-y: auto; border-right: 2px solid #ccc; background: #eee; }
-        .output-side { width: 58%; padding: 15px; overflow-y: auto; background: #fff; }
-        h2 { font-size: 1.1rem; border-left: 10px solid var(--accent); background: #ddd; padding: 6px 15px; margin: 10px 0; border-radius: 4px; }
-        .input-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
-        .clear-box-btn { width: 45px; height: 45px; background: #999; color: #fff; border: none; border-radius: 8px; font-size: 1.5rem; font-weight: bold; flex-shrink: 0; }
-        label { font-size: 0.9rem; font-weight: bold; color: #444; display: block; margin-bottom: 2px; }
-        .input-view { width: 100%; font-size: 1.7rem; padding: 8px; border: 3px solid #333; border-radius: 8px; box-sizing: border-box; text-align: right; font-weight: bold; }
-        .suggestion-card { border: 2px solid #333; border-radius: 12px; padding: 12px; margin-bottom: 12px; box-shadow: 0 3px 5px rgba(0,0,0,0.1); }
-        .card-header { display: flex; align-items: center; margin-bottom: 8px; }
-        .suggest-ratio { flex: 0 0 85px; text-align: center; font-size: 2.2rem; font-weight: 900; border-right: 2px solid #ccc; padding-right: 10px; }
-        .suggest-info { flex: 1; padding-left: 15px; font-size: 1.1rem; font-weight: bold; }
-        .out-status-badge { background: #333; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 0.85rem; display: inline-block; margin-bottom: 6px; }
-        .jib-text { color: var(--jib-red); font-weight: 900; }
-        .angle-info { color: #d35400; display: block; margin: 4px 0; font-size: 1rem; }
-        .clearance-alert { color: #fff; background: #f00; font-weight: bold; padding: 4px; margin-top: 6px; text-align: center; border-radius: 4px; font-size: 0.9rem; }
-        .evidence-box { background: #f0f0f0; border: 1px dashed #666; padding: 8px; font-size: 0.8rem; border-radius: 6px; margin-top: 8px; }
-    </style>
-</head>
-<body>
-    <header>
-        <div class="disclaimer">
-            参考値。現場確認必須。損害責任負いません。<br>
-            【重要】危険角度は諸元表にて事前に必ず確認願います。
-        </div>
-        <div class="app-title">クレーン施工提案アプリ</div>
-        <div id="crane-buttons" class="crane-selector"></div>
-    </header>
-    <div class="main-layout">
-        <div class="input-side">
-            <h2>条件入力</h2>
-            <div id="input-fields"></div>
-        </div>
-        <div class="output-side"><h2>推奨構成案</h2><div id="suggestion-list"></div></div>
-    </div>
-    <script>
-        let CRANE_DB = {};
-        let state = { crane: "", radius: "", weight: "", h_lift: "", h_goal: "", h_load: "", h_tool: "" };
-
-        fetch('cranes.json?' + new Date().getTime()).then(res => res.json()).then(data => { CRANE_DB = data; initApp(); });
-
-        function initApp() {
-            const btnArea = document.getElementById('crane-buttons');
-            Object.keys(CRANE_DB).forEach(key => {
-                const btn = document.createElement('button');
-                btn.className = 'crane-btn';
-                btn.innerHTML = CRANE_DB[key].name.replace(' (', '<br>(');
-                btn.onclick = (e) => {
-                    state.crane = key;
-                    document.querySelectorAll('.crane-btn').forEach(b => b.classList.remove('selected'));
-                    e.currentTarget.classList.add('selected');
-                    propose();
-                };
-                btnArea.appendChild(btn);
-            });
-            const fields = [
-                {id:'radius', l:'作業半径 (m)'}, {id:'weight', l:'純重量 (t)'}, 
-                {id:'h_lift', l:'吊上げ時の高さ (m)'}, {id:'h_goal', l:'着地時の高さ (m)'}, 
-                {id:'h_load', l:'荷物高 (m)'}, {id:'h_tool', l:'吊具長 (m)'}
-            ];
-            const area = document.getElementById('input-fields');
-            fields.forEach(f => {
-                area.innerHTML += `<div class="input-group"><label>${f.l}</label><div class="input-row"><button class="clear-box-btn" onclick="clearField('${f.id}')">×</button><div style="flex:1"><input type="text" inputmode="decimal" class="input-view" id="${f.id}" oninput="validateAndInput(this)"></div></div></div>`;
-            });
-        }
-
-        function clearField(id) { document.getElementById(id).value = ""; state[id] = ""; propose(); }
-        function validateAndInput(el) {
-            let val = el.value.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)).replace(/．/g, ".").replace(/[^0-9.]/g, "");
-            el.value = val; state[el.id] = val; propose();
-        }
-
-        function propose() {
-            const list = document.getElementById('suggestion-list');
-            if (!state.crane || !state.radius || !state.weight) {
-                list.innerHTML = `<div style="color:#888; text-align:center; padding:60px;">条件を入力してください。</div>`;
-                return;
-            }
-            const crane = CRANE_DB[state.crane];
-            const r_in = parseFloat(state.radius);
-            const w_in = parseFloat(state.weight);
-            
-            // 必要揚程（フック頂点までの高さ）の厳密算出
-            const h_base = Math.max(parseFloat(state.h_lift)||0, parseFloat(state.h_goal)||0);
-            const h_load = parseFloat(state.h_load)||0;
-            const h_tool = parseFloat(state.h_tool)||0;
-            const h_hook = crane.hookL.main; 
-            const reqH = h_base + h_load + h_tool + h_hook;
-
-            let results = [];
-
-            // メインブーム
-            Object.keys(crane.outriggers).forEach(outKey => {
-                const outSet = crane.outriggers[outKey];
-                crane.booms.forEach(len => {
-                    const h_limit = Math.sqrt(Math.pow(len, 2) - Math.pow(r_in, 2));
-                    
-                    // 物理限界(揚程曲線)による厳密足切り
-                    if (isNaN(h_limit) || h_limit <= reqH) return;
-                    const clearance = h_limit - reqH;
-
-                    const chart = outSet.data[len.toString()];
-                    if(!chart) return;
-                    const dists = Object.keys(chart).filter(k => k !== 'danger').map(Number).sort((a,b)=>a-b);
-                    let refR = null;
-                    for(let d of dists){ if(r_in <= (d + 0.001)){ refR = d; break; } }
-
-                    if (refR !== null) {
-                        let rated = chart[refR.toFixed(1)] || chart[refR.toString()];
-                        if(rated){
-                            let totalW = w_in + crane.hookW.main;
-                            let ratio = (totalW / rated) * 100;
-                            let angle = (len >= r_in) ? Math.acos(r_in / len) * (180 / Math.PI) : 0;
-                            if (ratio < 110) {
-                                results.push({
-                                    isJib: false, val: len, ratio: Math.round(ratio), rated: rated, 
-                                    total: totalW, refR: refR, page: outSet.page, angle: angle.toFixed(1),
-                                    parts: crane.boomParts[len.toString()], outName: outSet.name, clearance: clearance
-                                });
-                            }
-                        }
-                    }
-                });
-            });
-
-            // ジブ
-            crane.jibs.forEach(j => {
-                // 最大揚程による足切り
-                if (reqH >= crane.maxH) return;
-
-                const dists = Object.keys(j.charts).filter(k => k !== 'danger').map(Number).sort((a,b)=>a-b);
-                let refR = null;
-                for(let d of dists){ if(r_in <= (d + 0.001)){ refR = d; break; } }
-                if (refR !== null) {
-                    let rated = j.charts[refR.toFixed(1)] || j.charts[refR.toString()];
-                    if(rated){
-                        let totalW = w_in + crane.hookW.sub;
-                        let ratio = (totalW / rated) * 100;
-                        if (ratio < 110) {
-                            results.push({
-                                isJib: true, bLen: j.boomLen, jLen: j.jibLen, ratio: Math.round(ratio), rated: rated, 
-                                total: totalW, refR: refR, page: j.page, angle: j.angleRef,
-                                parts: j.parts, outName: 'アウトリガ最大(4.75m) 全周'
-                            });
-                        }
-                    }
-                }
-            });
-
-            results.sort((a,b) => a.ratio - b.ratio);
-            if (results.length === 0) {
-                list.innerHTML = `<div style="color:#f00; text-align:center; padding:60px; font-weight:bold;">PDF太枠外、または揚程・能力不足です</div>`;
-            } else {
-                list.innerHTML = results.map(res => `
-                    <div class="suggestion-card" style="background-color: ${res.ratio < 80 ? 'var(--bg-success)' : (res.ratio < 90 ? 'var(--bg-caution)' : 'var(--bg-error)')}">
-                        <div class="card-header">
-                            <div class="suggest-ratio">${res.ratio}%</div>
-                            <div class="suggest-info">
-                                <span class="out-status-badge">${res.outName}</span><br>
-                                <span style="font-size:1.15rem;">
-                                    ${res.isJib ? `ブーム ${res.bLen}m ＋ <span class="jib-text">ジブ ${res.jLen}m</span>` : `ブーム ${res.val}m`} / ${res.parts}本掛
-                                </span><br>
-                                <span class="angle-info">${res.isJib ? `ジブ時ブーム角度: ${res.angle}` : `ブーム参考角度: ${res.angle}度`}</span>
-                                ${(!res.isJib && res.clearance < 1.0) ? `<div class="clearance-alert">！注意：クリアランス ${res.clearance.toFixed(1)}m以内</div>` : ''}
-                                <div style="margin-top:4px;">定格: ${res.rated.toFixed(2)}t / 負荷計: ${res.total.toFixed(2)}t</div>
-                            </div>
-                        </div>
-                        <div class="evidence-box">諸元表 P.${res.page} 参照 / 半径 ${res.refR.toFixed(1)}m セル</div>
-                    </div>`).join('');
-            }
-        }
-    </script>
-</body>
-</html>
+{
+  "MR-130Rf": {
+    "name": "13t (MR-130Rf)",
+    "maxH": 24.8,
+    "hookW": { "main": 0.09, "sub": 0.025 },
+    "hookL": { "main": 1.41, "sub": 0.5 },
+    "booms": [5.3, 9.04, 12.78, 16.52, 20.26, 24.0],
+    "boomParts": { "5.3": 8, "9.04": 4, "12.78": 4, "16.52": 4, "20.26": 4, "24.0": 4 },
+    "outriggers": {
+      "4.75": { 
+        "name": "アウトリガ最大(4.75m) 全周", "page": "4", 
+        "data": { 
+          "5.3":   {"1.5": 13.0, "4.0": 6.1},
+          "24.0":  {"5.5": 3.2, "10.0": 1.75, "22.5": 0.34} 
+        } 
+      }
+    },
+    "jibs": [
+      { 
+        "boomLen": 24.0, 
+        "jibLen": 3.6, 
+        "parts": 1, 
+        "page": "6", 
+        "charts": [
+          { "maxR": 7.8,  "rated": 1.60, "angle": "75度", "range": "7.8mまで" },
+          { "maxR": 10.1, "rated": 1.60, "angle": "75度", "range": "7.8〜10.1m" },
+          { "maxR": 10.0, "rated": 1.25, "angle": "70度", "range": "7.8〜10.0m" },
+          { "maxR": 12.1, "rated": 1.25, "angle": "70度", "range": "10.0〜12.1m" },
+          { "maxR": 15.0, "rated": 0.93, "angle": "65度", "range": "12.1〜15.0m" }
+        ]
+      }
+    ]
+  }
+}
