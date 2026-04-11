@@ -3,114 +3,138 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>クレーン施工提案システム V53</title>
+    <title>クレーン施工提案アプリ V54</title>
     <style>
         :root { --bg-safe: #ffffff; --bg-success: #ccffcc; --bg-caution: #ffff99; --bg-error: #ffcccc; --accent: #000080; }
-        body { font-family: sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; display: flex; flex-direction: column; height: 100vh; }
+        body { font-family: sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
-        /* ヘッダー固定 */
         header { background: #fff; padding: 10px; border-bottom: 2px solid #ccc; flex-shrink: 0; }
         .disclaimer { color: #f00; font-size: 0.7rem; font-weight: bold; text-align: center; border: 1px solid #f00; padding: 2px; }
-        .app-title { color: var(--accent); font-size: 1.3rem; font-weight: 900; text-align: center; margin: 5px 0; }
+        .app-title { color: var(--accent); font-size: 1.6rem; font-weight: 900; text-align: center; margin: 8px 0; }
 
-        /* メインレイアウト（iPad用） */
+        /* 機種選択ボタン（フォント2倍） */
+        .crane-selector { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 10px 0; }
+        .crane-btn { height: 75px; font-size: 1.6rem; font-weight: 900; border: 3px solid #666; border-radius: 10px; background: #fff; transition: 0.2s; }
+        .crane-btn.selected { background: var(--accent); color: #fff; border-color: var(--accent); }
+
         .main-layout { display: flex; flex: 1; overflow: hidden; }
-        .input-side { width: 40%; padding: 15px; overflow-y: auto; border-right: 2px solid #ccc; background: #eee; }
-        .output-side { width: 60%; padding: 15px; overflow-y: auto; background: #fff; }
+        .input-side { width: 42%; padding: 15px; overflow-y: auto; border-right: 2px solid #ccc; background: #eee; }
+        .output-side { width: 58%; padding: 15px; overflow-y: auto; background: #fff; }
 
-        h2 { font-size: 1.1rem; border-left: 8px solid var(--accent); background: #ddd; padding: 5px 10px; margin: 15px 0 10px; }
-        .input-group { margin-bottom: 12px; }
-        label { font-size: 0.9rem; font-weight: bold; color: #555; display: block; }
-        .input-view { width: 100%; font-size: 1.5rem; padding: 8px; border: 2px solid #333; border-radius: 6px; box-sizing: border-box; text-align: right; font-weight: bold; }
+        h2 { font-size: 1.2rem; border-left: 10px solid var(--accent); background: #ddd; padding: 8px 15px; margin: 15px 0 10px; border-radius: 4px; }
         
-        /* 機種選択ボタン（6機種分） */
-        .crane-selector { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-bottom: 10px; }
-        .crane-btn { height: 45px; font-size: 0.8rem; font-weight: bold; border: 2px solid #666; border-radius: 5px; background: #fff; }
-        .crane-btn.selected { background: var(--accent); color: #fff; }
+        /* 入力エリアのクリアボタン付き構成 */
+        .input-row { display: flex; align-items: center; gap: 8px; margin-bottom: 15px; }
+        .clear-box-btn { width: 55px; height: 55px; background: #999; color: #fff; border: none; border-radius: 8px; font-size: 1.8rem; font-weight: bold; flex-shrink: 0; }
+        .clear-box-btn:active { background: #555; }
+        .input-wrap { flex: 1; }
+        label { font-size: 1rem; font-weight: bold; color: #444; display: block; margin-bottom: 4px; }
+        .input-view { width: 100%; font-size: 2rem; padding: 10px; border: 3px solid #333; border-radius: 8px; box-sizing: border-box; text-align: right; font-weight: bold; background: #fff; }
 
-        /* 提案リストのデザイン */
-        .suggestion-card { border: 2px solid #333; border-radius: 8px; padding: 10px; margin-bottom: 10px; display: flex; align-items: center; transition: 0.3s; }
-        .suggest-ratio { flex: 0 0 80px; text-align: center; font-size: 1.8rem; font-weight: 900; border-right: 2px solid #ccc; padding-right: 10px; }
-        .suggest-info { flex: 1; padding-left: 15px; font-size: 0.95rem; line-height: 1.4; }
-        .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; background: #000; color: #fff; font-size: 0.8rem; margin-bottom: 5px; }
+        .suggestion-card { border: 2px solid #333; border-radius: 12px; padding: 15px; margin-bottom: 12px; display: flex; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .suggest-ratio { flex: 0 0 90px; text-align: center; font-size: 2.2rem; font-weight: 900; border-right: 2px solid #ccc; padding-right: 12px; }
+        .suggest-info { flex: 1; padding-left: 20px; font-size: 1.1rem; line-height: 1.5; }
+        .badge { display: inline-block; padding: 4px 12px; border-radius: 6px; background: #000; color: #fff; font-size: 1rem; margin-bottom: 6px; }
 
-        .btn-reset { width: 100%; height: 50px; background: #666; color: #fff; font-weight: bold; border: none; border-radius: 8px; margin-top: 20px; font-size: 1.1rem; }
+        .btn-reset-all { width: 100%; height: 65px; background: #444; color: #fff; font-weight: bold; border: none; border-radius: 10px; margin-top: 20px; font-size: 1.4rem; }
 
-        @media (max-width: 768px) {
-            .main-layout { flex-direction: column; }
-            .input-side, .output-side { width: 100%; height: auto; border: none; }
-        }
+        @media (max-width: 1024px) { .input-side { width: 45%; } .output-side { width: 55%; } }
     </style>
 </head>
 <body>
     <header>
         <div class="disclaimer">参考値。現場確認必須。損害責任負いません。</div>
-        <div class="app-title">クレーン施工提案システム</div>
+        <div class="app-title">クレーン施工提案アプリ</div>
         <div class="crane-selector">
             <button class="crane-btn" onclick="selectCrane('MR-130Rf', this)" id="btn-MR-130Rf">13t (MR-130Rf)</button>
-            <button class="crane-btn" disabled>機種2(未)</button>
-            <button class="crane-btn" disabled>機種3(未)</button>
-            <button class="crane-btn" disabled>機種4(未)</button>
-            <button class="crane-btn" disabled>機種5(未)</button>
-            <button class="crane-btn" disabled>機種6(未)</button>
+            <button class="crane-btn" disabled>機種2</button>
+            <button class="crane-btn" disabled>機種3</button>
+            <button class="crane-btn" disabled>機種4</button>
         </div>
     </header>
 
     <div class="main-layout">
         <div class="input-side">
             <h2>荷物・条件入力</h2>
+            
             <div class="input-group">
                 <label>作業半径 (m)</label>
-                <input type="text" inputmode="decimal" class="input-view" id="radius" placeholder="0.0" oninput="validateAndInput(this)">
+                <div class="input-row">
+                    <button class="clear-box-btn" onclick="clearField('radius')">×</button>
+                    <div class="input-wrap"><input type="text" inputmode="decimal" class="input-view" id="radius" placeholder="0.0" oninput="validateAndInput(this)"></div>
+                </div>
             </div>
+
             <div class="input-group">
                 <label>荷物の純重量 (t)</label>
-                <input type="text" inputmode="decimal" class="input-view" id="weight" placeholder="0.0" oninput="validateAndInput(this)">
+                <div class="input-row">
+                    <button class="clear-box-btn" onclick="clearField('weight')">×</button>
+                    <div class="input-wrap"><input type="text" inputmode="decimal" class="input-view" id="weight" placeholder="0.0" oninput="validateAndInput(this)"></div>
+                </div>
             </div>
+
             <div class="input-group">
                 <label>着地場所・最大高さ (m)</label>
-                <input type="text" inputmode="decimal" class="input-view" id="h_max" placeholder="0.0" oninput="validateAndInput(this)">
+                <div class="input-row">
+                    <button class="clear-box-btn" onclick="clearField('h_max')">×</button>
+                    <div class="input-wrap"><input type="text" inputmode="decimal" class="input-view" id="h_max" placeholder="0.0" oninput="validateAndInput(this)"></div>
+                </div>
             </div>
+
             <div class="input-group">
                 <label>荷物の高さ (m)</label>
-                <input type="text" inputmode="decimal" class="input-view" id="h_load" placeholder="0.0" oninput="validateAndInput(this)">
+                <div class="input-row">
+                    <button class="clear-box-btn" onclick="clearField('h_load')">×</button>
+                    <div class="input-wrap"><input type="text" inputmode="decimal" class="input-view" id="h_load" placeholder="0.0" oninput="validateAndInput(this)"></div>
+                </div>
             </div>
+
             <div class="input-group">
                 <label>吊具の長さ (m)</label>
-                <input type="text" inputmode="decimal" class="input-view" id="h_tool" placeholder="0.0" oninput="validateAndInput(this)">
+                <div class="input-row">
+                    <button class="clear-box-btn" onclick="clearField('h_tool')">×</button>
+                    <div class="input-wrap"><input type="text" inputmode="decimal" class="input-view" id="h_tool" placeholder="0.0" oninput="validateAndInput(this)"></div>
+                </div>
             </div>
-            <button class="btn-reset" onclick="resetAll()">全入力をクリア</button>
+
+            <button class="btn-reset-all" onclick="resetAll()">全ての数値をリセット</button>
         </div>
 
         <div class="output-side">
             <h2>推奨構成案 (低負荷順)</h2>
             <div id="suggestion-list">
-                <div style="color:#888; text-align:center; padding:50px;">条件を入力すると、<br>最適なブーム・ジブ構成を提案します。</div>
+                <div style="color:#888; text-align:center; padding:80px; font-size:1.2rem;">
+                    左側の条件を入力してください。<br>最適なブーム・ジブ構成を提案します。
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        // MR-130Rf データベース (抜粋) [cite: 35, 39, 41, 44, 47, 49, 52, 56, 182]
+        // PDFデータに基づく諸元 (MR-130Rf)
         const CRANE_DB = {
             "MR-130Rf": {
                 name: "13t (MR-130Rf)",
-                maxH: 24.8, maxReach: 24.0, // [cite: 63, 62]
-                hookW: { main: 0.09, sub: 0.025 }, // [cite: 182]
+                maxH: 24.8,
+                hookW: { main: 0.09, sub: 0.025 },
                 hookL: { main: 1.0, sub: 0.5 },
-                booms: [5.3, 9.04, 12.78, 16.52, 20.26, 24.0], // [cite: 35, 39, 41, 44, 47, 49]
+                booms: [5.3, 9.04, 12.78, 16.52, 20.26, 24.0],
+                // PDF 6ページ 最大張出(4.75m) 定格荷重(ton) 暫定抜粋 [cite: 81, 268]
                 charts: {
-                    // 最大張出4.75m/CW固定の暫定データ [cite: 81, 268]
-                    "7.8": { 5:9.0, 10:4.5, 15:2.5, 20:1.3, 24:0.8 } 
-                },
-                jibs: [
-                    { len: 3.6, offset: [5, 25, 45, 60] }, // [cite: 52]
-                    { len: 5.5, offset: [5, 25, 45, 60] }  // [cite: 56]
-                ]
+                    "5.3": { 1.5:13.0, 3.5:7.0, 4.0:6.1 },
+                    "9.04": { 4.0:6.0, 6.0:4.0, 8.0:2.5 },
+                    "24.0": { 5.5:3.2, 10.0:1.95, 15.0:1.05, 20.0:0.52, 22.0:0.37 }
+                }
             }
         };
 
-        let state = { crane: "", radius: "", weight: "", h_max: "", h_load: "", h_tool: "" };
+        let state = { crane: "MR-130Rf", radius: "", weight: "", h_max: "", h_load: "", h_tool: "" };
+
+        function clearField(id) {
+            document.getElementById(id).value = "";
+            state[id] = "";
+            propose();
+        }
 
         function validateAndInput(el) {
             let val = el.value.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)).replace(/．/g, ".").replace(/[^0-9.]/g, "");
@@ -126,8 +150,7 @@
         }
 
         function resetAll() {
-            const currentCrane = state.crane;
-            state = { crane: currentCrane, radius: "", weight: "", h_max: "", h_load: "", h_tool: "" };
+            Object.keys(state).forEach(k => { if(k !== 'crane') state[k] = ""; });
             document.querySelectorAll('.input-view').forEach(el => el.value = "");
             propose();
         }
@@ -135,7 +158,7 @@
         function propose() {
             const list = document.getElementById('suggestion-list');
             if (!state.crane || !state.radius || !state.weight || !state.h_max) {
-                list.innerHTML = `<div style="color:#888; text-align:center; padding:50px;">条件を入力すると、最適な構成を提案します。</div>`;
+                list.innerHTML = `<div style="color:#888; text-align:center; padding:80px; font-size:1.2rem;">左側の条件を入力してください。</div>`;
                 return;
             }
 
@@ -145,35 +168,36 @@
             const h_req = (parseFloat(state.h_max) || 0) + (parseFloat(state.h_load) || 0) + (parseFloat(state.h_tool) || 0) + 1.9 + crane.hookL.main;
             
             let results = [];
-
-            // メインブーム全段数をチェック
+            
             crane.booms.forEach(len => {
-                // 本来はブーム長ごとのチャートを参照
-                let rated = crane.charts["7.8"][Math.ceil(r)] || 0;
-                let totalW = w + crane.hookW.main;
-                let ratio = (totalW / rated) * 100;
-                
-                // 物理的な届き判定（簡易式）
-                let reach_ok = Math.sqrt(r*r + h_req*h_req) <= len * 1.1; 
+                const chart = crane.charts[len.toString()] || crane.charts["24.0"];
+                let rated = 0;
+                const dists = Object.keys(chart).map(Number).sort((a,b) => a-b);
+                for(let d of dists) { if(r <= d) { rated = chart[d]; break; } }
 
-                if (rated > 0 && ratio < 105 && reach_ok) {
+                let totalW = w + crane.hookW.main;
+                let ratio = rated > 0 ? (totalW / rated) * 100 : 999;
+                
+                // 物理的な届き判定（ブーム長と作業半径から高さを概算）
+                let can_reach = Math.sqrt(len*len - r*r) >= (h_req - 2.0); // 簡易判定
+
+                if (rated > 0 && ratio < 105 && can_reach) {
                     results.push({ type: 'ブーム', val: len, ratio: Math.round(ratio), rated: rated, total: totalW });
                 }
             });
 
-            // 負荷率（余裕）がある順にソート
             results.sort((a, b) => a.ratio - b.ratio);
 
             if (results.length === 0) {
-                list.innerHTML = `<div style="color:#f00; font-weight:bold; text-align:center; padding:50px;">該当する安全な構成が見つかりません。<br>条件を見直してください。</div>`;
+                list.innerHTML = `<div style="color:#f00; font-weight:bold; text-align:center; padding:80px; font-size:1.3rem;">安全に揚重可能な構成が見つかりません。<br>（半径が遠すぎる、または揚程が足りません）</div>`;
             } else {
                 list.innerHTML = results.map(res => `
                     <div class="suggestion-card" style="background-color: ${res.ratio < 80 ? 'var(--bg-success)' : (res.ratio < 90 ? 'var(--bg-caution)' : 'var(--bg-error)')}">
                         <div class="suggest-ratio">${res.ratio}%</div>
                         <div class="suggest-info">
-                            <span class="badge">${res.type} ${res.val}m</span><br>
-                            <strong>定格: ${res.rated.toFixed(2)}t</strong> / 負荷: ${res.total.toFixed(2)}t<br>
-                            <small>必要揚程: ${h_req.toFixed(1)}m をクリア</small>
+                            <span class="badge">構成: ${res.val}m ブーム</span><br>
+                            <strong>定格荷重: ${res.rated.toFixed(2)}t</strong> / 負荷合計: ${res.total.toFixed(2)}t<br>
+                            <small>※必要高さ ${h_req.toFixed(1)}m クリア</small>
                         </div>
                     </div>
                 `).join('');
