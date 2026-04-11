@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>クレーン施工提案アプリ V76</title>
+    <title>クレーン施工提案アプリ V77</title>
     <style>
         :root { --bg-success: #ccffcc; --bg-caution: #ffff99; --bg-error: #ffcccc; --accent: #000080; --jib-red: #ff0000; }
         body { font-family: sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
@@ -47,7 +47,7 @@
     </div>
     <script>
         let CRANE_DB = {};
-        let state = { crane: "", radius: "", weight: "", h_max: "", h_load: "", h_tool: "" };
+        let state = { crane: "", radius: "", weight: "", h_lift: "", h_goal: "", h_load: "", h_tool: "" };
 
         fetch('cranes.json?' + new Date().getTime()).then(res => res.json()).then(data => { CRANE_DB = data; initApp(); });
 
@@ -68,9 +68,10 @@
             const fields = [
                 {id:'radius', l:'作業半径 (m)'}, 
                 {id:'weight', l:'純重量 (t)'}, 
-                {id:'h_max', l:'着地高 (m)'}, 
-                {id:'h_load', l:'荷物高 (m)'}, 
-                {id:'h_tool', l:'吊具長 (m)'}
+                {id:'h_lift', l:'吊上げ時の高さ(地盤面比) (m)'}, 
+                {id:'h_goal', l:'着地時の高さ(地盤面比) (m)'}, 
+                {id:'h_load', l:'荷物自体の高さ (m)'}, 
+                {id:'h_tool', l:'吊具の長さ (m)'}
             ];
             const area = document.getElementById('input-fields');
             fields.forEach(f => {
@@ -87,24 +88,25 @@
         function propose() {
             const list = document.getElementById('suggestion-list');
             if (!state.crane || !state.radius || !state.weight) {
-                list.innerHTML = `<div style="color:#888; text-align:center; padding:60px;">条件を入力してください。</div>`;
+                list.innerHTML = `<div style="color:#888; text-align:center; padding:60px;">機種を選択し、条件を入力してください。</div>`;
                 return;
             }
             const crane = CRANE_DB[state.crane];
             const r_in = parseFloat(state.radius);
             const w_in = parseFloat(state.weight);
             
-            // 必要揚程の計算
-            const reqH = (parseFloat(state.h_max)||0) + (parseFloat(state.h_load)||0) + (parseFloat(state.h_tool)||0) + crane.hookL.main;
+            // 必要揚程の計算：(吊上げ高 or 着地高)の高い方 + 荷物高 + 吊具長 + フックマージン
+            const highestPos = Math.max(parseFloat(state.h_lift)||0, parseFloat(state.h_goal)||0);
+            const reqH = highestPos + (parseFloat(state.h_load)||0) + (parseFloat(state.h_tool)||0) + crane.hookL.main;
 
             let results = [];
 
             Object.keys(crane.outriggers).forEach(outKey => {
                 const outSet = crane.outriggers[outKey];
                 crane.booms.forEach(len => {
-                    // 揚程チェック：そのブーム長で必要高さに届くか（三平方の定理）
-                    const maxH = Math.sqrt(Math.pow(len, 2) - Math.pow(r_in, 2));
-                    if (isNaN(maxH) || maxH < (reqH - 1.5)) return; // 地上高の下駄を1.5mと仮定して判定
+                    // 揚程チェック
+                    const maxPossibleH = Math.sqrt(Math.pow(len, 2) - Math.pow(r_in, 2));
+                    if (isNaN(maxPossibleH) || maxPossibleH < (reqH - 1.5)) return; 
 
                     const chart = outSet.data[len.toString()];
                     if(!chart) return;
