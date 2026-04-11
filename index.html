@@ -1,59 +1,34 @@
-// propose関数内の判定ロジックを以下のように更新してください
-
-function propose() {
-    // ...（中略）...
-    const crane = CRANE_DB[state.crane];
-    const r_in = parseFloat(state.radius);
-    const w_in = parseFloat(state.weight);
-    
-    // 必要揚程の算出（フックの頂点＝ブーム先端が到達すべき最低地上高）
-    const h_base = Math.max(parseFloat(state.h_lift)||0, parseFloat(state.h_goal)||0);
-    const h_load = parseFloat(state.h_load)||0;
-    const h_tool = parseFloat(state.h_tool)||0;
-    const h_hook = crane.hookL.main; // 1.41m
-    
-    // フックを巻き上げた際の頂点高さ
-    const reqH = h_base + h_load + h_tool + h_hook;
-
-    let results = [];
-
-    // メインブーム
-    Object.keys(crane.outriggers).forEach(outKey => {
-        const outSet = crane.outriggers[outKey];
-        crane.booms.forEach(len => {
-            // ブーム先端の物理的な最大到達高さ（三平方の定理）
-            // len^2 = r_in^2 + h_limit^2  => h_limit = sqrt(len^2 - r_in^2)
-            const h_limit = Math.sqrt(Math.pow(len, 2) - Math.pow(r_in, 2));
-            
-            // 【厳格判定】物理限界(h_limit)が、必要高さ(reqH)より低い場合は即排除
-            // ※旋回中心の高さを考慮せず、安全側に「ブーム長のみ」で判定
-            if (isNaN(h_limit) || h_limit <= reqH) return;
-
-            const clearance = h_limit - reqH;
-            const chart = outSet.data[len.toString()];
-            // ...（以下、定格参照と比率計算）...
-
-            if (refR !== null) {
-                let rated = chart[refR.toFixed(1)] || chart[refR.toString()];
-                if(rated){
-                    let totalW = w_in + crane.hookW.main;
-                    let ratio = (totalW / rated) * 100;
-                    if (ratio < 110) {
-                        results.push({
-                            // ...（中略）...
-                            clearance: clearance
-                        });
-                    }
-                }
-            }
-        });
-    });
-
-    // ジブ
-    crane.jibs.forEach(j => {
-        // ジブの場合も、諸元表の最大揚程（24.8m）を絶対に超えないよう判定
-        if (reqH >= crane.maxH) return; 
-        // ...（中略）...
-    });
-    // ...
+{
+  "MR-130Rf": {
+    "name": "13t (MR-130Rf)",
+    "maxH": 24.8,
+    "hookW": { "main": 0.09, "sub": 0.025 },
+    "hookL": { "main": 1.41, "sub": 0.5 },
+    "booms": [5.3, 9.04, 12.78, 16.52, 20.26, 24.0],
+    "boomParts": { "5.3": 8, "9.04": 4, "12.78": 4, "16.52": 4, "20.26": 4, "24.0": 4 },
+    "outriggers": {
+      "4.75": { 
+        "name": "アウトリガ最大(4.75m) 全周", 
+        "page": "4", 
+        "data": { 
+          "5.3":   {"1.5": 13.0, "2.0": 12.0, "3.0": 8.2, "3.5": 7.0, "4.0": 6.1},
+          "9.04":  {"4.0": 6.0, "4.5": 5.5, "5.0": 5.0, "6.0": 4.1, "7.0": 3.35, "8.0": 2.7, "9.0": 2.3},
+          "12.78": {"4.0": 6.0, "6.0": 4.0, "8.0": 2.9, "10.0": 1.85, "11.0": 1.5, "12.0": 1.45},
+          "16.52": {"4.0": 5.0, "6.0": 3.8, "8.0": 2.7, "10.0": 2.05, "11.0": 1.7, "15.0": 1.15},
+          "20.26": {"5.0": 4.05, "8.0": 2.5, "10.0": 1.95, "11.0": 1.75, "15.0": 1.05, "19.0": 0.62},
+          "24.0":  {"5.5": 3.2, "8.0": 2.25, "10.0": 1.75, "11.0": 1.55, "15.0": 1.05, "22.5": 0.34} 
+        } 
+      }
+    },
+    "jibs": [
+      { 
+        "boomLen": 24.0, 
+        "jibLen": 3.6, 
+        "parts": 1, 
+        "page": "6", 
+        "angleRef": "75度",
+        "charts": { "10.1": 1.60, "15.0": 0.93 } 
+      }
+    ]
+  }
 }
