@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>クレーン施工提案アプリ V70</title>
+    <title>クレーン施工提案アプリ V71</title>
     <style>
-        :root { --bg-success: #ccffcc; --bg-caution: #ffff99; --bg-error: #ffcccc; --accent: #000080; }
+        :root { --bg-success: #ccffcc; --bg-caution: #ffff99; --bg-error: #ffcccc; --accent: #000080; --jib-red: #ff0000; }
         body { font-family: sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         header { background: #fff; padding: 10px; border-bottom: 2px solid #ccc; flex-shrink: 0; }
         .app-title { color: var(--accent); font-size: 1.6rem; font-weight: 900; text-align: center; margin: 5px 0; }
@@ -24,9 +24,11 @@
         .card-header { display: flex; align-items: center; margin-bottom: 8px; }
         .suggest-ratio { flex: 0 0 85px; text-align: center; font-size: 2.2rem; font-weight: 900; border-right: 2px solid #ccc; padding-right: 10px; }
         .suggest-info { flex: 1; padding-left: 15px; font-size: 1.1rem; font-weight: bold; }
-        .angle-info { color: #d35400; display: block; margin-bottom: 4px; font-size: 0.95rem; }
-        .out-name-badge { background: #333; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; margin-bottom: 4px; display: inline-block; }
-        .evidence-box { background: #f0f0f0; border: 1px dashed #666; padding: 8px; font-size: 0.8rem; border-radius: 6px; margin-top: 5px; }
+        .badge-type { background: #333; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 0.9rem; display: inline-block; margin-bottom: 4px; }
+        .jib-text { color: var(--jib-red); font-weight: 900; }
+        .angle-info { color: #d35400; display: block; margin: 4px 0; font-size: 1rem; }
+        .danger-alert { color: #ff0000; font-weight: 900; border: 1px solid #ff0000; padding: 2px 6px; border-radius: 4px; font-size: 0.85rem; display: inline-block; }
+        .evidence-box { background: #f0f0f0; border: 1px dashed #666; padding: 8px; font-size: 0.8rem; border-radius: 6px; margin-top: 8px; }
     </style>
 </head>
 <body>
@@ -36,7 +38,7 @@
             <h2>条件入力</h2>
             <div id="input-fields"></div>
         </div>
-        <div class="output-side"><h2>全アウトリガー一括提案</h2><div id="suggestion-list"></div></div>
+        <div class="output-side"><h2>推奨構成案 (低負荷順)</h2><div id="suggestion-list"></div></div>
     </div>
     <script>
         let CRANE_DB = {};
@@ -74,7 +76,7 @@
         function propose() {
             const list = document.getElementById('suggestion-list');
             if (!state.crane || !state.radius || !state.weight) {
-                list.innerHTML = `<div style="color:#888; text-align:center; padding:60px;">機種を選択し、条件を入力してください。</div>`;
+                list.innerHTML = `<div style="color:#888; text-align:center; padding:60px;">条件を入力してください。</div>`;
                 return;
             }
             const crane = CRANE_DB[state.crane];
@@ -83,13 +85,13 @@
             
             let results = [];
 
-            // 全アウトリガーパターンをループで計算
+            // メインブーム計算
             Object.keys(crane.outriggers).forEach(outKey => {
                 const outSet = crane.outriggers[outKey];
                 crane.booms.forEach(len => {
                     const chart = outSet.data[len.toString()];
                     if(!chart) return;
-                    const dists = Object.keys(chart).map(Number).sort((a,b)=>a-b);
+                    const dists = Object.keys(chart).filter(k => k !== 'danger').map(Number).sort((a,b)=>a-b);
                     let refR = null;
                     for(let d of dists){ if(r_in <= d){ refR = d; break; } }
                     if (refR !== null) {
@@ -100,9 +102,9 @@
                             let angle = (len >= r_in) ? Math.acos(r_in / len) * (180 / Math.PI) : 0;
                             if (ratio < 110) {
                                 results.push({
-                                    type: 'ブーム', val: len, ratio: Math.round(ratio), rated: rated, 
+                                    isJib: false, val: len, ratio: Math.round(ratio), rated: rated, 
                                     total: totalW, refR: refR, page: outSet.page, angle: angle.toFixed(1),
-                                    parts: crane.boomParts[len.toString()], outName: outSet.name
+                                    parts: crane.boomParts[len.toString()], outName: outSet.name, danger: chart.danger || 0
                                 });
                             }
                         }
@@ -112,7 +114,7 @@
 
             // ジブ計算
             crane.jibs.forEach(j => {
-                const dists = Object.keys(j.charts).map(Number).sort((a,b)=>a-b);
+                const dists = Object.keys(j.charts).filter(k => k !== 'danger').map(Number).sort((a,b)=>a-b);
                 let refR = null;
                 for(let d of dists){ if(r_in <= d){ refR = d; break; } }
                 if (refR !== null) {
@@ -122,9 +124,9 @@
                         let ratio = (totalW / rated) * 100;
                         if (ratio < 110) {
                             results.push({
-                                type: 'ジブ', val: `${j.boomLen}m + ${j.jibLen}m`, ratio: Math.round(ratio), rated: rated, 
-                                total: totalW, refR: refR, page: j.page, angle: '諸元表参照',
-                                parts: j.parts, outName: '最大(4.75m) 全周'
+                                isJib: true, val: `${j.boomLen}m + ${j.jibLen}m`, ratio: Math.round(ratio), rated: rated, 
+                                total: totalW, refR: refR, page: j.page, angle: j.angleRef || '諸元表参照',
+                                parts: j.parts, outName: '最大(4.75m) 全周', danger: j.danger
                             });
                         }
                     }
@@ -133,17 +135,22 @@
 
             results.sort((a,b) => a.ratio - b.ratio);
             if (results.length === 0) {
-                list.innerHTML = `<div style="color:#f00; text-align:center; padding:60px; font-weight:bold;">安全範囲外です</div>`;
+                list.innerHTML = `<div style="color:#f00; text-align:center; padding:60px; font-weight:bold;">能力不足または範囲外です</div>`;
             } else {
                 list.innerHTML = results.map(res => `
                     <div class="suggestion-card" style="background-color: ${res.ratio < 80 ? 'var(--bg-success)' : (res.ratio < 90 ? 'var(--bg-caution)' : 'var(--bg-error)')}">
                         <div class="card-header">
                             <div class="suggest-ratio">${res.ratio}%</div>
                             <div class="suggest-info">
-                                <span class="out-name-badge">${res.outName}</span><br>
-                                <span style="font-size:1.2rem;">${res.val}${res.type==='ジブ'?'':'mブーム'} / ${res.parts}本掛</span><br>
-                                <span class="angle-info">${res.type==='ブーム' ? `ブーム参考角度: ${res.angle}度` : `角度: 諸元表記載参照`}</span>
-                                定格: ${res.rated.toFixed(2)}t
+                                <span class="badge-type">${res.outName}</span><br>
+                                <span style="font-size:1.2rem;">
+                                    ${res.isJib ? `ブーム ${res.val} <span class="jib-text">ジブ</span>` : `ブーム ${res.val}m`} / ${res.parts}本掛
+                                </span><br>
+                                <span class="angle-info">
+                                    ${res.isJib ? `ジブ時ブーム角度: ${res.angle}` : `ブーム参考角度: ${res.angle}度`}
+                                </span>
+                                ${res.danger > 0 ? `<div class="danger-alert">！危険角度：${res.danger}度</div>` : ''}
+                                <div style="margin-top:4px;">定格: ${res.rated.toFixed(2)}t</div>
                             </div>
                         </div>
                         <div class="evidence-box">P.${res.page}参照 / 半径${res.refR.toFixed(1)}mの値を採用</div>
