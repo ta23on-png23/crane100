@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>クレーン施工提案アプリ V65</title>
+    <title>クレーン施工提案アプリ V66</title>
     <style>
         :root { --bg-success: #ccffcc; --bg-caution: #ffff99; --bg-error: #ffcccc; --accent: #000080; }
         body { font-family: sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
@@ -12,28 +12,23 @@
         .crane-selector { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 5px 0; }
         .crane-btn { height: 60px; font-size: 1rem; font-weight: 900; border: 3px solid #666; border-radius: 8px; background: #fff; }
         .crane-btn.selected { background: var(--accent) !important; color: #fff !important; }
-        
         .main-layout { display: flex; flex: 1; overflow: hidden; }
         .input-side { width: 42%; padding: 15px; overflow-y: auto; border-right: 2px solid #ccc; background: #eee; }
         .output-side { width: 58%; padding: 15px; overflow-y: auto; background: #fff; }
-        
         h2 { font-size: 1.1rem; border-left: 10px solid var(--accent); background: #ddd; padding: 6px 15px; margin: 10px 0; border-radius: 4px; }
         .outrigger-selector { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-bottom: 10px; }
         .out-btn { height: 45px; font-size: 0.8rem; font-weight: bold; border: 2px solid #666; border-radius: 5px; background: #fff; }
         .out-btn.selected { background: #333 !important; color: #fff !important; }
-        
         .input-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
         .clear-box-btn { width: 45px; height: 45px; background: #999; color: #fff; border: none; border-radius: 8px; font-size: 1.5rem; font-weight: bold; }
         .input-view { width: 100%; font-size: 1.7rem; padding: 8px; border: 3px solid #333; border-radius: 8px; box-sizing: border-box; text-align: right; font-weight: bold; }
-        
-        /* 提案カードとエビデンス表示 */
         .suggestion-card { border: 2px solid #333; border-radius: 12px; padding: 12px; margin-bottom: 12px; box-shadow: 0 3px 5px rgba(0,0,0,0.1); }
         .card-main { display: flex; align-items: center; margin-bottom: 8px; }
         .suggest-ratio { flex: 0 0 85px; text-align: center; font-size: 2rem; font-weight: 900; border-right: 2px solid #ccc; padding-right: 10px; }
         .suggest-info { flex: 1; padding-left: 15px; font-size: 1rem; font-weight: bold; }
         .evidence-box { background: #f9f9f9; border: 1px dashed #666; padding: 8px; font-size: 0.8rem; color: #444; border-radius: 6px; line-height: 1.4; }
-        .evidence-tag { font-weight: 900; color: #d35400; }
         .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; background: var(--accent); color: #fff; font-size: 0.8rem; margin-bottom: 4px; }
+        .h-alert { color: #f00; font-weight: bold; display: block; margin-top: 4px; border: 1px solid #f00; padding: 2px; text-align: center; border-radius: 4px; }
     </style>
 </head>
 <body>
@@ -113,6 +108,7 @@
             const crane = CRANE_DB[state.crane];
             const r_raw = parseFloat(state.radius);
             const w = parseFloat(state.weight);
+            const h_req = (parseFloat(state.h_max)||0) + (parseFloat(state.h_load)||0) + (parseFloat(state.h_tool)||0);
             
             let results = [];
             const outSet = crane.outriggers[state.out] || crane.outriggers["4.75"];
@@ -121,7 +117,6 @@
                 const chart = outSet.data[len.toString()];
                 if(!chart) return;
                 
-                // 【厳格マトリックス照合】
                 const dists = Object.keys(chart).map(Number).sort((a,b)=>a-b);
                 let targetR = null;
                 for(let d of dists){ if(r_raw <= d){ targetR = d; break; } }
@@ -130,12 +125,15 @@
                     let rated = chart[targetR.toString()];
                     let totalW = w + crane.hookW.main;
                     let ratio = (totalW / rated) * 100;
-                    let angle = Math.acos(r_raw / len) * (180 / Math.PI);
+                    
+                    // 揚程計算（余裕を見るため緩やかに判定）
+                    let h_can = Math.sqrt(len*len - r_raw*r_raw);
+                    let h_ok = h_can >= (h_req + 1.0); // 1mの余裕で判定
 
                     if (ratio < 105) {
                         results.push({
                             type: 'ブーム', val: len, ratio: Math.round(ratio), rated: rated, 
-                            total: totalW, angle: angle.toFixed(1), page: outSet.page,
+                            total: totalW, h_ok: h_ok, h_can: h_can, page: outSet.page,
                             refR: targetR, rawR: r_raw, parts: crane.boomParts[len.toString()]
                         });
                     }
@@ -153,13 +151,11 @@
                             <div class="suggest-info">
                                 <span class="badge">${res.val}mブーム / ${res.parts}本掛</span><br>
                                 定格: ${res.rated.toFixed(2)}t / 負荷合計: ${res.total.toFixed(2)}t
+                                ${!res.h_ok && state.h_max ? `<span class="h-alert">！揚程不足 (可能:${res.h_can.toFixed(1)}m)</span>` : ''}
                             </div>
                         </div>
                         <div class="evidence-box">
-                            <span class="evidence-tag">【参照エビデンス】</span><br>
-                            資料: ${state.crane} 諸元表 <span style="font-weight:bold">P.${res.page}</span><br>
-                            照合セル: 半径 <span style="font-weight:bold">${res.refR.toFixed(1)}m</span> 行 × ブーム <span style="font-weight:bold">${res.val}m</span> 列<br>
-                            <small>※入力半径 ${res.rawR}m に対し、安全側(遠方)の数値を採用</small>
+                            資料: ${state.crane} P.${res.page} / 照合: 半径${res.refR.toFixed(1)}m×${res.val}m
                         </div>
                     </div>`).join('');
             }
