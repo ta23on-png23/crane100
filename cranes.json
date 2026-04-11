@@ -17,7 +17,7 @@
     },
     "jibs": [
       { 
-        "boomLen": 24.0, "jibLen": 3.6, "parts": 1, "page": "6", "danger": 4, "angleRef": "75度〜",
+        "boomLen": 24.0, "jibLen": 3.6, "parts": 1, "page": "6", "danger": 4, "angleRef": "75度",
         "charts": { "10.1": 1.6, "15.0": 0.93 } 
       }
     ]
