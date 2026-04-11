@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>クレーン施工提案アプリ V77</title>
+    <title>クレーン施工提案アプリ V79</title>
     <style>
         :root { --bg-success: #ccffcc; --bg-caution: #ffff99; --bg-error: #ffcccc; --accent: #000080; --jib-red: #ff0000; }
         body { font-family: sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         header { background: #fff; padding: 10px; border-bottom: 2px solid #ccc; flex-shrink: 0; }
-        .disclaimer { color: #f00; font-size: 0.75rem; font-weight: bold; text-align: center; border: 1px solid #f00; padding: 4px; margin-bottom: 8px; }
+        .disclaimer { color: #f00; font-size: 0.75rem; font-weight: bold; text-align: center; border: 2px solid #f00; padding: 4px; margin-bottom: 8px; }
         .app-title { color: var(--accent); font-size: 1.6rem; font-weight: 900; text-align: center; margin-bottom: 8px; }
         .crane-selector { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 5px; }
         .crane-btn { height: 60px; font-size: 1rem; font-weight: 900; border: 3px solid #666; border-radius: 8px; background: #fff; line-height: 1.2; }
@@ -28,7 +28,7 @@
         .out-status-badge { background: #333; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 0.85rem; display: inline-block; margin-bottom: 6px; }
         .jib-text { color: var(--jib-red); font-weight: 900; }
         .angle-info { color: #d35400; display: block; margin: 4px 0; font-size: 1rem; }
-        .danger-alert { color: #ff0000; font-weight: 900; border: 1px solid #ff0000; padding: 2px 6px; border-radius: 4px; font-size: 0.85rem; display: inline-block; }
+        .danger-alert { color: #ff0000; font-weight: 900; border: 1px solid #ff0000; padding: 4px 8px; border-radius: 4px; font-size: 1rem; display: inline-block; background: #fff; }
         .evidence-box { background: #f0f0f0; border: 1px dashed #666; padding: 8px; font-size: 0.8rem; border-radius: 6px; margin-top: 8px; }
     </style>
 </head>
@@ -66,12 +66,9 @@
                 btnArea.appendChild(btn);
             });
             const fields = [
-                {id:'radius', l:'作業半径 (m)'}, 
-                {id:'weight', l:'純重量 (t)'}, 
-                {id:'h_lift', l:'吊上げ時の高さ(地盤面比) (m)'}, 
-                {id:'h_goal', l:'着地時の高さ(地盤面比) (m)'}, 
-                {id:'h_load', l:'荷物自体の高さ (m)'}, 
-                {id:'h_tool', l:'吊具の長さ (m)'}
+                {id:'radius', l:'作業半径 (m)'}, {id:'weight', l:'純重量 (t)'}, 
+                {id:'h_lift', l:'吊上げ時の高さ (m)'}, {id:'h_goal', l:'着地時の高さ (m)'}, 
+                {id:'h_load', l:'荷物自体の高さ (m)'}, {id:'h_tool', l:'吊具の長さ (m)'}
             ];
             const area = document.getElementById('input-fields');
             fields.forEach(f => {
@@ -94,35 +91,33 @@
             const crane = CRANE_DB[state.crane];
             const r_in = parseFloat(state.radius);
             const w_in = parseFloat(state.weight);
-            
-            // 必要揚程の計算：(吊上げ高 or 着地高)の高い方 + 荷物高 + 吊具長 + フックマージン
-            const highestPos = Math.max(parseFloat(state.h_lift)||0, parseFloat(state.h_goal)||0);
-            const reqH = highestPos + (parseFloat(state.h_load)||0) + (parseFloat(state.h_tool)||0) + crane.hookL.main;
+            const reqH = Math.max(parseFloat(state.h_lift)||0, parseFloat(state.h_goal)||0) + (parseFloat(state.h_load)||0) + (parseFloat(state.h_tool)||0) + crane.hookL.main;
 
             let results = [];
 
+            // 1. メインブーム計算
             Object.keys(crane.outriggers).forEach(outKey => {
                 const outSet = crane.outriggers[outKey];
                 crane.booms.forEach(len => {
-                    // 揚程チェック
-                    const maxPossibleH = Math.sqrt(Math.pow(len, 2) - Math.pow(r_in, 2));
-                    if (isNaN(maxPossibleH) || maxPossibleH < (reqH - 1.5)) return; 
+                    const h_limit = Math.sqrt(Math.pow(len, 2) - Math.pow(r_in, 2));
+                    if (isNaN(h_limit) || h_limit < (reqH - 1.5)) return;
 
                     const chart = outSet.data[len.toString()];
                     if(!chart) return;
                     const dists = Object.keys(chart).filter(k => k !== 'danger').map(Number).sort((a,b)=>a-b);
                     let refR = null;
                     for(let d of dists){ if(r_in <= d){ refR = d; break; } }
+
                     if (refR !== null) {
                         let rated = chart[refR.toFixed(1)] || chart[refR.toString()];
                         if(rated){
                             let totalW = w_in + crane.hookW.main;
                             let ratio = (totalW / rated) * 100;
-                            let angle = Math.acos(r_in / len) * (180 / Math.PI);
+                            let calcAngle = Math.acos(r_in / len) * (180 / Math.PI);
                             if (ratio < 110) {
                                 results.push({
                                     isJib: false, val: len, ratio: Math.round(ratio), rated: rated, 
-                                    total: totalW, refR: refR, page: outSet.page, angle: angle.toFixed(1),
+                                    total: totalW, refR: refR, page: outSet.page, angle: calcAngle.toFixed(1),
                                     parts: crane.boomParts[len.toString()], outName: outSet.name, danger: 0
                                 });
                             }
@@ -131,7 +126,7 @@
                 });
             });
 
-            // ジブ計算
+            // 2. ジブ計算
             crane.jibs.forEach(j => {
                 const dists = Object.keys(j.charts).filter(k => k !== 'danger').map(Number).sort((a,b)=>a-b);
                 let refR = null;
@@ -154,7 +149,7 @@
 
             results.sort((a,b) => a.ratio - b.ratio);
             if (results.length === 0) {
-                list.innerHTML = `<div style="color:#f00; text-align:center; padding:60px; font-weight:bold;">高さ不足、または能力範囲外です</div>`;
+                list.innerHTML = `<div style="color:#f00; text-align:center; padding:60px; font-weight:bold;">能力不足または範囲外です</div>`;
             } else {
                 list.innerHTML = results.map(res => `
                     <div class="suggestion-card" style="background-color: ${res.ratio < 80 ? 'var(--bg-success)' : (res.ratio < 90 ? 'var(--bg-caution)' : 'var(--bg-error)')}">
@@ -163,16 +158,16 @@
                             <div class="suggest-info">
                                 <span class="out-status-badge">${res.outName}</span><br>
                                 <span style="font-size:1.2rem;">
-                                    ${res.isJib ? `ブーム ${res.val} <span class="jib-text">ジブ</span>` : `ブーム ${res.val}m`} / ${res.parts}本掛
+                                    ${res.isJib ? `<span class="jib-text">ジブ</span> ${res.val}` : `ブーム ${res.val}m`} / ${res.parts}本掛
                                 </span><br>
                                 <span class="angle-info">
                                     ${res.isJib ? `ジブ時ブーム角度: ${res.angle}` : `ブーム参考角度: ${res.angle}度`}
                                 </span>
                                 ${res.isJib && res.danger > 0 ? `<div class="danger-alert">！危険角度：${res.danger}度</div>` : ''}
-                                <div style="margin-top:4px;">定格: ${res.rated.toFixed(2)}t</div>
+                                <div style="margin-top:4px;">定格: ${res.rated.toFixed(2)}t / 負荷計: ${res.total.toFixed(2)}t</div>
                             </div>
                         </div>
-                        <div class="evidence-box">諸元表 P.${res.page}参照 / 半径${res.refR.toFixed(1)}mの値を採用</div>
+                        <div class="evidence-box">諸元表 P.${res.page} 参照 / 半径 ${res.refR.toFixed(1)}m セル</div>
                     </div>`).join('');
             }
         }
